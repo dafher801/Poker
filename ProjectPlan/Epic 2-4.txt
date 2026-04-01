@@ -1,0 +1,98 @@
+```json
+{
+  "id": 4,
+  "description": "게임 화면의 시각적 표현 전체를 담당하는 View 계층을 구축한다. 타원형 테이블 레이아웃에 최대 10개 플레이어 슬롯을 배치하고, 각 슬롯에 플레이어 이름·칩 스택·딜러 버튼·현재 베팅액·상태(Fold/AllIn/Active)를 표시한다. 커뮤니티 카드 5장 영역(테이블 중앙)과 로컬 플레이어 홀카드 2장 영역을 구성하며, 상대 홀카드는 뒷면으로 표시하되 쇼다운 시 공개한다. 메인 팟 및 사이드 팟 금액을 표시한다. 모든 UI 갱신은 IGameEventBroadcaster 구독을 통해 이루어지며, 카드 딜·카드 뒤집기·칩 이동에 대한 기본 애니메이션(DOTween 또는 코루틴)을 포함한다. 에픽 완료 시 Mock 이벤트를 순차 발행하여 화면이 올바르게 갱신되는지 육안 검증한다.",
+  "epic": [
+    {
+      "id": 1,
+      "task": "GameViewEventData",
+      "layer": "Director",
+      "description": "View 계층이 구독할 게임 이벤트 데이터 구조체를 정의하는 소스 파일. 각 이벤트는 readonly struct 또는 class로 선언한다. 포함 이벤트 목록: PlayerSeatUpdatedEvent(seatIndex, playerName, chipStack, isDealer, isFolded, isAllIn, isActive), HoleCardsDealtEvent(seatIndex, Card[] cards, bool isFaceUp), CommunityCardDealtEvent(int cardIndex, Card card), PlayerActionDisplayEvent(seatIndex, actionType, betAmount), PotUpdatedEvent(int mainPot, int[] sidePots), ShowdownRevealEvent(seatIndex, Card[] cards), RoundResultEvent(int[] winningSeatIndices, int[] amounts). 모든 이벤트는 불변(immutable) 데이터만 보유하며 로직을 포함하지 않는다."
+    },
+    {
+      "id": 2,
+      "task": "IGameEventBroadcaster",
+      "layer": "Director",
+      "description": "View가 구독할 이벤트 브로드캐스터 인터페이스를 정의하는 소스 파일. C# event 또는 Action 델리게이트 기반으로 각 GameViewEventData에 대응하는 이벤트를 선언한다: event Action<PlayerSeatUpdatedEvent> OnPlayerSeatUpdated, event Action<HoleCardsDealtEvent> OnHoleCardsDealt, event Action<CommunityCardDealtEvent> OnCommunityCardDealt, event Action<PlayerActionDisplayEvent> OnPlayerActionDisplay, event Action<PotUpdatedEvent> OnPotUpdated, event Action<ShowdownRevealEvent> OnShowdownReveal, event Action<RoundResultEvent> OnRoundResult. 인터페이스만 정의하고 구현은 포함하지 않는다."
+    },
+    {
+      "id": 3,
+      "task": "CardSpriteProvider",
+      "layer": "View",
+      "description": "Card 엔티티(Rank, Suit)를 Sprite로 매핑하는 ScriptableObject 소스 파일. [CreateAssetMenu]로 에디터에서 생성 가능하게 한다. 필드: Sprite cardBack(카드 뒷면), Sprite[] cardFronts(52장 스프라이트 배열). public 메서드: Sprite GetFrontSprite(Rank rank, Suit suit) — rank와 suit를 인덱스로 변환하여 cardFronts에서 반환, Sprite GetBackSprite() — cardBack 반환. 인덱스 계산: (int)suit * 13 + (int)rank. Sprite 배열이 null이거나 길이가 52 미만이면 에디터 경고 로그를 출력한다."
+    },
+    {
+      "id": 4,
+      "task": "카드 스프라이트 에셋 구성",
+      "layer": "None",
+      "description": "52장 카드 앞면 스프라이트와 1장 카드 뒷면 스프라이트를 프로젝트에 임포트한다. 무료 카드 에셋(예: Kenney Playing Cards)을 사용하거나 플레이스홀더 이미지를 제작한다. 스프라이트는 Resources/Sprites/Cards/ 폴더에 배치하고, CardSpriteProvider ScriptableObject 인스턴스를 Resources/Data/ 폴더에 생성하여 52장 스프라이트를 순서대로(Spade A~K, Heart A~K, Diamond A~K, Club A~K) cardFronts 배열에 할당하고, 뒷면 스프라이트를 cardBack 필드에 할당한다."
+    },
+    {
+      "id": 5,
+      "task": "TableLayoutManager",
+      "layer": "View",
+      "description": "타원형 테이블 위에 최대 10개 플레이어 슬롯 위치를 계산·관리하는 MonoBehaviour 소스 파일. 인스펙터 필드: float radiusX, float radiusY (타원 반지름), int maxSeats = 10, Transform tableCenter. 좌석 위치는 타원 방정식 (radiusX * cos(θ), radiusY * sin(θ))으로 계산하며, 로컬 플레이어 좌석(seatIndex 0)이 화면 하단 중앙(θ = 270°)에 오도록 오프셋한다. public 메서드: Vector3 GetSeatPosition(int seatIndex) — 해당 좌석의 월드 좌표 반환, Vector3 GetBetChipPosition(int seatIndex) — 좌석과 테이블 중앙 사이 40% 지점 반환. 게임 시작 시 PlayerSlotView 프리팹을 maxSeats개 인스턴스화하여 각 위치에 배치하는 InitializeSlots(GameObject prefab) 메서드를 포함한다."
+    },
+    {
+      "id": 6,
+      "task": "CardView",
+      "layer": "View",
+      "description": "카드 한 장의 시각적 표현을 담당하는 MonoBehaviour 소스 파일. 필드: SpriteRenderer frontRenderer, SpriteRenderer backRenderer (또는 UI Image 2개), CardSpriteProvider spriteProvider, bool isFaceUp. public 메서드: void SetCard(Rank rank, Suit suit) — spriteProvider로 앞면 스프라이트를 설정하고 내부에 Rank/Suit 저장, void SetFaceUp(bool faceUp) — isFaceUp 상태에 따라 앞면/뒷면 활성화 전환, void FlipWithAnimation(bool toFaceUp, float duration = 0.3f) — CardAnimator를 호출하여 뒤집기 애니메이션 실행, void ResetCard() — 카드를 비활성 상태로 초기화. 초기 상태는 비활성(GameObject.SetActive(false))이다."
+    },
+    {
+      "id": 7,
+      "task": "PlayerSlotView",
+      "layer": "View",
+      "description": "플레이어 슬롯 하나의 시각적 표현을 담당하는 MonoBehaviour 소스 파일. UI 참조 필드: TextMeshProUGUI nameLabel, TextMeshProUGUI chipStackLabel, TextMeshProUGUI betAmountLabel, GameObject dealerButtonIcon, GameObject foldOverlay, GameObject allInBadge, CardView[] holeCards (2장). int seatIndex를 저장한다. public 메서드: void Initialize(int seatIndex) — 좌석 인덱스 설정 및 초기 상태(비어 있음)로 리셋, void UpdatePlayerInfo(string name, int chipStack, bool isDealer) — 이름·칩·딜러 버튼 갱신, void UpdateBetAmount(int amount) — 베팅액 텍스트 갱신 (0이면 숨김), void UpdateStatus(bool isFolded, bool isAllIn, bool isActive) — Fold 오버레이/AllIn 배지/활성 하이라이트 토글, void ShowHoleCards(Card[] cards, bool faceUp) — holeCards에 카드 설정 및 표시, void RevealHoleCards() — 뒷면이던 홀카드를 FlipWithAnimation으로 공개, void ClearSlot() — 슬롯을 빈 상태로 리셋."
+    },
+    {
+      "id": 8,
+      "task": "CommunityCardsView",
+      "layer": "View",
+      "description": "테이블 중앙 커뮤니티 카드 5장 영역을 관리하는 MonoBehaviour 소스 파일. 필드: CardView[] communityCards (5장, 인스펙터에서 할당 또는 자동 생성), Transform[] cardSlotPositions (5개 위치). public 메서드: void DealCard(int index, Card card) — index번째 CardView에 카드를 설정하고 CardAnimator를 사용해 딜 애니메이션 후 앞면 공개, void DealFlop(Card[] threeCards) — 0~2번 카드를 연속 딜(각 0.2초 딜레이), void DealTurn(Card card) — 3번 카드 딜, void DealRiver(Card card) — 4번 카드 딜, void ClearAll() — 5장 모두 ResetCard 후 비활성화. 초기 상태는 5장 모두 비활성이다."
+    },
+    {
+      "id": 9,
+      "task": "HoleCardsView",
+      "layer": "View",
+      "description": "로컬 플레이어와 상대 플레이어의 홀카드 표시 로직을 통합 관리하는 MonoBehaviour 소스 파일. PlayerSlotView의 holeCards 배열을 활용하되, 로컬/상대 구분 로직을 캡슐화한다. 필드: int localSeatIndex. public 메서드: void SetLocalSeat(int seatIndex) — 로컬 플레이어 좌석 지정, void DealHoleCards(int seatIndex, Card[] cards, bool isFaceUp) — 해당 좌석의 PlayerSlotView.ShowHoleCards 호출. seatIndex == localSeatIndex이면 faceUp=true로, 아니면 faceUp=false로 전달. 카드 딜 시 CardAnimator의 딜 애니메이션 적용, void RevealForShowdown(int seatIndex, Card[] cards) — 해당 좌석 PlayerSlotView의 홀카드를 실제 카드로 설정 후 RevealHoleCards 호출, void ClearAllHoleCards() — 모든 좌석의 홀카드 초기화. PlayerSlotView[] 참조는 GameTableView로부터 주입받는다."
+    },
+    {
+      "id": 10,
+      "task": "PotDisplayView",
+      "layer": "View",
+      "description": "메인 팟 및 사이드 팟 금액을 표시하는 MonoBehaviour 소스 파일. 테이블 중앙 상단에 배치된다. 필드: TextMeshProUGUI mainPotLabel, Transform sidePotContainer, GameObject sidePotPrefab. 런타임에 사이드 팟 개수에 따라 sidePotPrefab을 동적 생성/삭제한다. public 메서드: void UpdatePot(int mainPot, int[] sidePots) — mainPotLabel에 'Pot: {mainPot}' 텍스트 설정, 사이드 팟 배열 길이만큼 sidePotContainer 자식 오브젝트를 갱신(부족하면 Instantiate, 초과하면 Destroy), 각 사이드 팟 금액 텍스트 설정. mainPot이 0이면 라벨 숨김, void ClearPot() — 모든 팟 표시 초기화."
+    },
+    {
+      "id": 11,
+      "task": "CardAnimator",
+      "layer": "View",
+      "description": "카드 딜 및 뒤집기 애니메이션을 담당하는 정적 유틸리티 또는 MonoBehaviour 소스 파일. DOTween 사용을 기본으로 하되, DOTween 미설치 시 코루틴 폴백을 제공한다. public static 메서드: Tween AnimateDeal(Transform card, Vector3 fromPosition, Vector3 toPosition, float duration = 0.4f) — fromPosition에서 toPosition으로 이동 + scale 0→1 팝업 애니메이션, Tween AnimateFlip(Transform card, System.Action onHalfway, float duration = 0.3f) — Y축 기준 0→90° 회전 후 onHalfway 콜백(스프라이트 교체 시점) 실행, 90→0° 복귀. 코루틴 폴백: IEnumerator DealCoroutine, IEnumerator FlipCoroutine 동일 동작 구현. 덱 위치(화면 밖 좌상단)를 기본 fromPosition 상수로 정의한다."
+    },
+    {
+      "id": 12,
+      "task": "ChipAnimator",
+      "layer": "View",
+      "description": "칩 이동 애니메이션을 담당하는 정적 유틸리티 또는 MonoBehaviour 소스 파일. public static 메서드: Tween AnimateChipToPot(Transform chipIcon, Vector3 fromPosition, Vector3 potPosition, float duration = 0.35f) — 플레이어 베팅 위치에서 팟 위치로 이동 후 페이드아웃, Tween AnimateChipToPlayer(Transform chipIcon, Vector3 potPosition, Vector3 toPosition, float duration = 0.35f) — 팟에서 승자 위치로 이동. 칩 아이콘은 임시 GameObject를 풀링(ObjectPool) 또는 Instantiate/Destroy로 관리한다. 애니메이션 완료 시 칩 오브젝트를 자동 반환/파괴하는 콜백을 포함한다."
+    },
+    {
+      "id": 13,
+      "task": "GameTableView",
+      "layer": "View",
+      "description": "게임 테이블 전체 View의 루트 오브젝트이자 이벤트 구독 허브 역할을 하는 MonoBehaviour 소스 파일. 필드: TableLayoutManager layoutManager, PlayerSlotView[] playerSlots (10개), CommunityCardsView communityCards, HoleCardsView holeCards, PotDisplayView potDisplay. IGameEventBroadcaster 참조를 외부(Director)로부터 주입받는다. OnEnable에서 IGameEventBroadcaster의 모든 이벤트를 구독하고, OnDisable에서 해제한다. 각 이벤트 핸들러는 수신한 이벤트 데이터를 해당 하위 View의 public 메서드로 라우팅한다: OnPlayerSeatUpdated → playerSlots[e.seatIndex].UpdatePlayerInfo/UpdateStatus, OnHoleCardsDealt → holeCards.DealHoleCards, OnCommunityCardDealt → communityCards.DealCard, OnPlayerActionDisplay → playerSlots[e.seatIndex].UpdateBetAmount, OnPotUpdated → potDisplay.UpdatePot, OnShowdownReveal → holeCards.RevealForShowdown, OnRoundResult → 승자 하이라이트 및 ChipAnimator 호출."
+    },
+    {
+      "id": 14,
+      "task": "테이블 UI 씬 및 프리팹 구성",
+      "layer": "None",
+      "description": "Unity 씬에 게임 테이블 UI 계층 구조를 구성한다. Canvas(Screen Space - Camera) 하위에 GameTableView 오브젝트를 루트로 배치하고, 자식으로 TableBackground(타원형 테이블 이미지), CommunityCardsArea(5개 CardView 슬롯 수평 배열), PotDisplay(중앙 상단), PlayerSlotContainer(10개 슬롯이 TableLayoutManager에 의해 배치될 부모)를 생성한다. PlayerSlot 프리팹을 제작한다: 배경 패널, NameLabel(TMP), ChipStackLabel(TMP), BetAmountLabel(TMP), DealerButton(Image, 기본 비활성), FoldOverlay(반투명 회색), AllInBadge(텍스트), HoleCard0·HoleCard1(CardView). 모든 컴포넌트를 해당 View 스크립트에 연결하고 인스펙터에서 참조를 할당한다."
+    },
+    {
+      "id": 15,
+      "task": "MockEventPublisher",
+      "layer": "Director",
+      "description": "IGameEventBroadcaster를 구현하여 테스트용 Mock 이벤트를 순차 발행하는 MonoBehaviour 소스 파일. 씬에 배치하면 Start 또는 버튼 클릭 시 코루틴으로 다음 시나리오를 자동 실행한다: (1) 4명 플레이어 착석 이벤트(0.3초 간격), (2) 딜러 버튼 지정, (3) 홀카드 딜(각 플레이어에 2장, 0.2초 간격), (4) 프리플롭 베팅 액션(Fold 1명, Call 2명, Raise 1명), (5) 팟 갱신, (6) 플롭 3장 딜, (7) 턴 1장 딜, (8) 리버 1장 딜, (9) 쇼다운 이벤트(남은 플레이어 홀카드 공개), (10) 라운드 결과(승자에 칩 이동). 각 단계 사이에 1~2초 딜레이를 두어 육안 확인이 가능하도록 한다. 사용하는 Card 데이터는 하드코딩된 테스트 값이다."
+    }
+  ]
+}
+```

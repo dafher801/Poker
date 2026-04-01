@@ -1,0 +1,38 @@
+```json
+{
+  "id": 3,
+  "description": "Photon(PUN 2 또는 Fusion)을 사용하여 온라인 멀티플레이를 구현한다. 로비 UI·룸 생성 및 참가, 호스트 권한 게임 로직 실행(호스트에서만 Director·Usecase 구동), 네트워크 Gateway 구현체(IPlayerActionProvider를 구현하는 RemotePlayerActionGateway — 클라이언트 액션을 호스트로 전송, IGameEventBroadcaster를 구현하는 NetworkEventBroadcaster — 호스트 게임 상태를 클라이언트로 동기화), 빈 슬롯 AI 자동 충원, 연결 끊김 처리를 포함한다. 비-호스트 클라이언트의 View는 로컬 Director 없이 NetworkEventBroadcaster가 제공하는 IGameEventBroadcaster를 구독하여 화면을 갱신하므로 마일스톤 2의 View 코드를 그대로 재사용한다. 별도 기기 2대 이상에서 같은 방에 접속해 한 판의 텍사스 홀덤을 완료할 수 있으면 검증 완료이다.",
+  "milestone": [
+    {
+      "id": 1,
+      "epic": "Photon 네트워크 인프라",
+      "description": "Photon PUN 2 SDK를 프로젝트에 설치하고, AppId 설정·서버 연결·해제·기본 콜백(OnConnectedToMaster, OnJoinedRoom, OnPlayerEnteredRoom, OnPlayerLeftRoom 등)을 래핑하는 네트워크 서비스 클래스를 구현한다. 이 에픽이 완료되면 앱 실행 시 Photon 마스터 서버에 성공적으로 연결되고, 연결 상태를 로그로 확인할 수 있어야 한다."
+    },
+    {
+      "id": 2,
+      "epic": "로비 UI 및 룸 관리",
+      "description": "로비 화면(View)을 구현하여 룸 목록 조회, 룸 생성(방 이름·최대 인원 설정), 룸 참가, 룸 나가기 기능을 제공한다. 룸 내부에서는 현재 참가 플레이어 목록과 준비 상태를 표시하며, 호스트가 게임 시작 버튼을 눌러 인게임으로 전환할 수 있는 흐름까지 포함한다. 이 에픽이 완료되면 두 대 이상의 클라이언트가 같은 룸에 접속하여 서로의 닉네임을 확인하고 호스트가 게임 시작을 트리거할 수 있어야 한다."
+    },
+    {
+      "id": 3,
+      "epic": "네트워크 Gateway 구현",
+      "description": "마일스톤 1에서 정의한 IPlayerActionProvider를 구현하는 RemotePlayerActionGateway와, IGameEventBroadcaster를 구현하는 NetworkEventBroadcaster를 작성한다. RemotePlayerActionGateway는 비-호스트 클라이언트에서 플레이어의 Fold/Check/Call/Raise 액션을 Photon RPC 또는 이벤트로 호스트에게 전송하고, 호스트 측에서는 이를 수신하여 기존 IPlayerActionProvider 인터페이스 형태로 Usecase에 제공한다. NetworkEventBroadcaster는 호스트에서 발생하는 게임 상태 변화(딜·베팅 결과·팟 갱신·커뮤니티 카드 공개·라운드 결과 등)를 Photon 이벤트로 모든 클라이언트에 브로드캐스트하며, 클라이언트 측에서는 수신한 이벤트를 IGameEventBroadcaster 인터페이스의 콜백으로 변환하여 View가 구독할 수 있도록 한다. 이 에픽이 완료되면 호스트에서 발생시킨 더미 게임 이벤트가 원격 클라이언트에서 정상 수신되고, 원격 클라이언트에서 보낸 더미 액션이 호스트에서 정상 수신되는 것을 확인할 수 있어야 한다."
+    },
+    {
+      "id": 4,
+      "epic": "호스트 권한 게임 루프 통합",
+      "description": "호스트 클라이언트에서만 Director와 Usecase가 구동되도록 게임 시작 흐름을 분기한다. 호스트는 마일스톤 1·2에서 구현한 기존 GameDirector를 그대로 사용하되, 원격 플레이어 슬롯에는 RemotePlayerActionGateway를 주입하고 이벤트 출력에는 NetworkEventBroadcaster를 추가로 연결한다. 비-호스트 클라이언트는 로컬 Director·Usecase를 생성하지 않고, NetworkEventBroadcaster가 제공하는 IGameEventBroadcaster를 구독하여 마일스톤 2의 View 코드(GameView, PlayerPanelView 등)를 그대로 재사용해 화면을 갱신한다. 각 클라이언트는 자신의 홀 카드만 볼 수 있도록 호스트가 개인 카드 정보를 해당 플레이어에게만 전송한다. 이 에픽이 완료되면 두 대 이상의 클라이언트에서 한 판의 텍사스 홀덤(프리플롭→플롭→턴→리버→쇼다운)을 네트워크를 통해 완주할 수 있어야 한다."
+    },
+    {
+      "id": 5,
+      "epic": "빈 슬롯 AI 자동 충원",
+      "description": "호스트가 게임 시작을 트리거할 때, 룸 내 접속 플레이어 수가 최소 플레이 인원(2명)을 충족하되 빈 슬롯이 존재하면 마일스톤 1에서 구현한 AIPlayerActionGateway를 자동으로 할당하여 나머지 좌석을 AI로 채운다. 호스트는 게임 시작 전 AI 충원 여부 및 AI 수를 설정할 수 있으며, AI 슬롯은 다른 플레이어에게도 'AI' 라벨로 표시된다. 이 에픽이 완료되면 사람 2명 + AI 2명 구성 등 혼합 테이블에서 한 판을 정상 완료할 수 있어야 한다."
+    },
+    {
+      "id": 6,
+      "epic": "연결 끊김 및 예외 처리",
+      "description": "플레이어가 게임 도중 연결이 끊어졌을 때의 처리를 구현한다. 비-호스트 플레이어가 끊어지면 호스트는 해당 슬롯을 AI로 대체하여 게임을 계속 진행하고, 재접속 시 관전 모드로 전환하거나 다음 핸드부터 복귀할 수 있도록 한다. 호스트가 끊어진 경우 Photon의 호스트 마이그레이션을 활용하거나, 불가능할 경우 게임을 종료하고 로비로 복귀시킨다. 모든 연결 끊김 상황에서 클라이언트에 적절한 안내 메시지를 표시한다. 이 에픽이 완료되면 게임 도중 한 클라이언트의 네트워크를 강제 차단해도 나머지 플레이어의 게임이 중단 없이 진행되는 것을 확인할 수 있어야 한다."
+    }
+  ]
+}
+```

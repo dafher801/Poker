@@ -1,0 +1,62 @@
+```json
+{
+  "id": 6,
+  "description": "플레이어가 게임 도중 연결이 끊어졌을 때의 처리를 구현한다. 비-호스트 플레이어가 끊어지면 호스트는 해당 슬롯을 AI로 대체하여 게임을 계속 진행하고, 재접속 시 관전 모드로 전환하거나 다음 핸드부터 복귀할 수 있도록 한다. 호스트가 끊어진 경우 Photon의 호스트 마이그레이션을 활용하거나, 불가능할 경우 게임을 종료하고 로비로 복귀시킨다. 모든 연결 끊김 상황에서 클라이언트에 적절한 안내 메시지를 표시한다. 이 에픽이 완료되면 게임 도중 한 클라이언트의 네트워크를 강제 차단해도 나머지 플레이어의 게임이 중단 없이 진행되는 것을 확인할 수 있어야 한다.",
+  "epic": [
+    {
+      "id": 1,
+      "task": "ConnectionState Entity 정의",
+      "layer": "Entity",
+      "description": "PlayerConnectionState.cs를 작성한다. 플레이어의 연결 상태를 나타내는 enum(Connected, Disconnected, Spectating, PendingRejoin)과, 연결 끊김 시점의 스냅샷 데이터를 보관하는 DisconnectionRecord 클래스를 정의한다. DisconnectionRecord는 플레이어 고유 식별자(string UserId), 좌석 인덱스(int SeatIndex), 끊김 시점 칩 보유량(long ChipCount), 끊김 시점 해당 핸드가 진행 중이었는지 여부(bool WasMidHand), 끊긴 플레이어가 호스트였는지 여부(bool WasHost) 필드를 갖는다."
+    },
+    {
+      "id": 2,
+      "task": "PhotonDisconnectionGateway 구현",
+      "layer": "Gateway",
+      "description": "PhotonDisconnectionGateway.cs를 작성한다. MonoBehaviourPunCallbacks를 상속하여 Photon의 OnPlayerLeftRoom, OnDisconnected, OnMasterClientSwitched 콜백을 수신한다. 각 콜백 발생 시 C# event(Action<DisconnectionRecord> OnPlayerDisconnected, Action OnLocalDisconnected, Action<Photon.Realtime.Player> OnHostChanged)를 발행한다. OnPlayerLeftRoom에서는 떠난 플레이어의 CustomProperties로부터 UserId, SeatIndex, ChipCount를 읽어 DisconnectionRecord를 생성한다. OnDisconnected에서는 로컬 클라이언트 자신의 연결 끊김을 감지하고 DisconnectCause를 함께 전달한다."
+    },
+    {
+      "id": 3,
+      "task": "PlayerSessionGateway 구현",
+      "layer": "Gateway",
+      "description": "PlayerSessionGateway.cs를 작성한다. 각 플레이어의 세션 정보(UserId, SeatIndex, ChipCount, 현재 핸드 참여 여부)를 Photon Room CustomProperties에 직렬화하여 저장·조회하는 기능을 제공한다. SavePlayerSession(DisconnectionRecord record), LoadPlayerSession(string odlUserId) → DisconnectionRecord?, ClearPlayerSession(string userId) 메서드를 구현한다. 재접속한 플레이어가 자신의 이전 세션을 조회할 수 있도록 키를 'session_{userId}' 형식으로 관리한다."
+    },
+    {
+      "id": 4,
+      "task": "DisconnectionHandleUsecase 구현",
+      "layer": "Usecase",
+      "description": "DisconnectionHandleUsecase.cs를 작성한다. 비-호스트 플레이어 끊김 처리 로직을 담당한다. HandlePlayerDisconnect(DisconnectionRecord record) 메서드는 (1) 해당 좌석을 AI 슬롯으로 전환하라는 결과(SeatReplacementResult: seatIndex, aiDifficulty)를 반환하고, (2) 현재 핸드가 진행 중이면 AI가 해당 핸드를 이어받도록 WasMidHand 플래그를 설정한다. HandleReconnection(string userId, DisconnectionRecord? record) 메서드는 세션이 존재하면 ReconnectionResult(SpectateUntilNextHand | RejoinNextHand, 복원할 SeatIndex, ChipCount)를 반환하고, 세션이 없으면 NewJoin을 반환한다."
+    },
+    {
+      "id": 5,
+      "task": "HostMigrationUsecase 구현",
+      "layer": "Usecase",
+      "description": "HostMigrationUsecase.cs를 작성한다. EvaluateHostMigration(bool isPhotonMasterClientSwitched, int remainingPlayerCount) 메서드를 구현한다. Photon이 자동으로 MasterClient를 전환했으면(isPhotonMasterClientSwitched == true) MigrationResult.Succeeded를 반환하고, 새 호스트가 이전 게임 상태를 이어받을 수 있도록 필요한 동기화 데이터 목록(GameStateSyncPayload)을 생성한다. MasterClient 전환이 실패했거나 남은 플레이어가 0명이면 MigrationResult.Failed를 반환하여 게임 종료·로비 복귀를 지시한다."
+    },
+    {
+      "id": 6,
+      "task": "DisconnectionDirector 구현",
+      "layer": "Director",
+      "description": "DisconnectionDirector.cs를 작성한다. MonoBehaviour를 상속하지 않으며, 초기화 시 PhotonDisconnectionGateway와 PlayerSessionGateway를 주입받는다. (1) OnPlayerDisconnected 이벤트 수신 → PlayerSessionGateway에 세션 저장 → DisconnectionHandleUsecase.HandlePlayerDisconnect 호출 → AI 교체 요청을 기존 게임 흐름 Director에 전달(Action<SeatReplacementResult> OnAIReplacementRequested 이벤트 발행) → View에 알림 요청(Action<string> OnNotificationRequested 발행). (2) OnHostChanged 이벤트 수신 → HostMigrationUsecase.EvaluateHostMigration 호출 → 성공 시 게임 상태 동기화 트리거, 실패 시 Action OnReturnToLobbyRequested 발행. (3) OnLocalDisconnected 이벤트 수신 → 로컬 클라이언트에 끊김 안내 표시 요청 발행 및 자동 재접속 시도 트리거. (4) 재접속 감지 시 DisconnectionHandleUsecase.HandleReconnection 호출 → 결과에 따라 관전 모드 진입 또는 다음 핸드 복귀 플래그를 설정하고 Action<ReconnectionResult> OnReconnectionResolved 발행."
+    },
+    {
+      "id": 7,
+      "task": "DisconnectionNotificationView 구현",
+      "layer": "View",
+      "description": "DisconnectionNotificationView.cs를 작성한다. Canvas 하위에 배치되는 MonoBehaviour UI 컴포넌트로, DisconnectionDirector의 OnNotificationRequested, OnReturnToLobbyRequested 이벤트를 구독한다. 상황별 안내 메시지를 화면 상단 토스트 형태로 표시한다: (1) 다른 플레이어 끊김: '{닉네임}님의 연결이 끊어졌습니다. AI가 대신 플레이합니다.' (2) 로컬 끊김: '서버와의 연결이 끊어졌습니다. 재접속 중...' + 스피너 애니메이션. (3) 호스트 끊김 마이그레이션 성공: '호스트가 변경되었습니다. 게임을 계속합니다.' (4) 호스트 끊김 마이그레이션 실패: '호스트와의 연결이 끊어져 게임이 종료됩니다.' + 3초 후 로비 씬 로드. 토스트는 DOTween 또는 코루틴으로 페이드인·3초 유지·페이드아웃 처리한다."
+    },
+    {
+      "id": 8,
+      "task": "SpectatorOverlayView 구현",
+      "layer": "View",
+      "description": "SpectatorOverlayView.cs를 작성한다. DisconnectionDirector의 OnReconnectionResolved 이벤트를 구독하여, ReconnectionResult가 SpectateUntilNextHand인 경우 활성화된다. 활성화 시 (1) 기존 베팅 액션 버튼(Fold/Check/Raise 등)을 비활성화하고, (2) 화면 하단 중앙에 반투명 배너 '관전 중 – 다음 핸드부터 참여합니다'를 표시하며, (3) 새 핸드가 시작되면(Director로부터 OnNewHandStarted 이벤트 수신) 자동으로 배너를 숨기고 액션 버튼을 다시 활성화한다. 배너는 CanvasGroup alpha 조절로 페이드 처리한다."
+    },
+    {
+      "id": 9,
+      "task": "DisconnectionNotification UI 레이아웃 배치",
+      "layer": "None",
+      "description": "Unity 에디터에서 기존 게임 씬의 Canvas 하위에 DisconnectionNotification 관련 UI 오브젝트를 배치한다. (1) 화면 상단 중앙에 앵커된 'ToastPanel' (CanvasGroup + HorizontalLayoutGroup) 생성, 기본 alpha=0, 배경 반투명 검정(#000000AA), 모서리 라운드. (2) ToastPanel 내부에 TextMeshProUGUI 'ToastMessage' 배치(폰트 크기 24, 흰색, 중앙 정렬). (3) 재접속 스피너용 Image 'SpinnerIcon' 배치, 기본 비활성. (4) 화면 하단 중앙에 'SpectatorBanner' (CanvasGroup, 기본 alpha=0, 반투명 파란 배경 #2196F380) 생성, 내부에 TextMeshProUGUI '관전 중' 텍스트 배치. (5) DisconnectionNotificationView와 SpectatorOverlayView 컴포넌트를 각각 ToastPanel, SpectatorBanner 오브젝트에 어태치하고 Inspector에서 참조를 연결한다."
+    }
+  ]
+}
+```

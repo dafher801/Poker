@@ -1,0 +1,38 @@
+```json
+{
+  "id": 2,
+  "description": "코어 포커 엔진 위에 구체적 Gateway 구현체(로컬 유저 입력 Gateway, AI 의사결정 Gateway — 둘 다 IPlayerActionProvider 구현), Director(게임 흐름 상태 머신, 턴 관리), View(테이블·카드·칩·플레이어 슬롯·액션 버튼 UI)를 구축하여 최대 10명(유저 1 + AI 9)이 참여하는 로컬 싱글 플레이어 게임을 완성한다. Director는 게임 상태 변경을 IGameEventBroadcaster 인터페이스를 통해 발행하고, View는 이 인터페이스를 구독하여 화면을 갱신하는 구조로 설계한다. 이로써 입력(IPlayerActionProvider)과 출력(IGameEventBroadcaster) 양방향 모두 추상화되어, 이후 네트워크 기반 구현체가 추가되더라도 기존 Director·View 코드를 수정할 필요가 없다. 빌드를 실행하여 AI 상대와 한 판의 텍사스 홀덤을 프리플롭부터 쇼다운까지 끝까지 플레이할 수 있으면 검증 완료이다.",
+  "milestone": [
+    {
+      "id": 1,
+      "epic": "게임 이벤트 브로드캐스팅 시스템",
+      "description": "Director → View 간 통신을 위한 출력 추상화 계층을 구축한다. IGameEventBroadcaster 인터페이스를 정의하고, 로컬(인프로세스) 구현체인 LocalGameEventBroadcaster를 작성한다. 게임 진행 중 발생하는 모든 이벤트 타입을 Entity로 정의한다: 페이즈 변경(PhaseChanged), 카드 딜(CardsDealt — 홀카드·커뮤니티 구분), 플레이어 액션 수행(PlayerActed), 팟 갱신(PotUpdated), 턴 시작(TurnStarted), 쇼다운 결과(ShowdownResult), 핸드 종료(HandEnded). View는 이 인터페이스만 구독하므로, 이후 네트워크 구현체로 교체해도 View 코드를 수정할 필요가 없다. 에픽 완료 시 단위 테스트로 이벤트 발행·구독·수신이 정상 동작함을 확인한다."
+    },
+    {
+      "id": 2,
+      "epic": "게임 디렉터 — 흐름 상태 머신 및 턴 관리",
+      "description": "한 판의 텍사스 홀덤을 프리플롭 → 플롭 → 턴 → 리버 → 쇼다운 순서로 진행하는 핵심 Director를 구현한다. 상태 머신 기반으로 각 페이즈를 전이하며, 매 턴마다 해당 플레이어의 IPlayerActionProvider에게 액션을 요청하고 결과를 검증한 뒤 IGameEventBroadcaster로 이벤트를 발행한다. 딜러 버튼 회전, 스몰·빅 블라인드 강제 베팅, 액션 순서(UTG→딜러), 베팅 라운드 종료 조건(모든 액티브 플레이어 동일 베팅 or 올인/폴드), 사이드 팟 생성 및 분배, 한 명 남았을 때 즉시 핸드 종료 등 모든 게임 흐름 규칙을 처리한다. Director는 MonoBehaviour를 상속하지 않으며, async/코루틴 기반으로 비동기 액션 대기를 지원한다. 에픽 완료 시 IPlayerActionProvider를 Mock으로 주입해 스크립트된 시나리오(프리플롭 올폴드, 쇼다운까지 진행, 사이드 팟 발생 등)가 올바르게 진행됨을 검증한다."
+    },
+    {
+      "id": 3,
+      "epic": "AI 의사결정 Gateway",
+      "description": "IPlayerActionProvider를 구현하는 AI 플레이어 Gateway를 작성한다. AI는 현재 핸드 강도(핸드 랭크 평가 Usecase 활용), 팟 오즈, 포지션, 베팅 상황 등을 종합하여 Fold/Check/Call/Raise 중 하나를 결정한다. 최소한 보수적(Tight-Passive)·공격적(Loose-Aggressive) 두 가지 성향 프리셋을 지원하여, 게임 세션 생성 시 AI 플레이어마다 다른 성향을 부여할 수 있도록 한다. 레이즈 금액은 팟 대비 비율 기반으로 결정하며, 의사결정에 약간의 랜덤성을 부여하여 예측 불가능성을 확보한다. 액션 반환 시 인위적 딜레이(0.5~2초)를 포함해 자연스러운 플레이 속도를 구현한다. 에픽 완료 시 AI 9명끼리 자동 대전하여 핸드가 정상 종료됨을 검증한다."
+    },
+    {
+      "id": 4,
+      "epic": "게임 테이블 및 플레이어 View",
+      "description": "게임 화면의 시각적 표현 전체를 담당하는 View 계층을 구축한다. 타원형 테이블 레이아웃에 최대 10개 플레이어 슬롯을 배치하고, 각 슬롯에 플레이어 이름·칩 스택·딜러 버튼·현재 베팅액·상태(Fold/AllIn/Active)를 표시한다. 커뮤니티 카드 5장 영역(테이블 중앙)과 로컬 플레이어 홀카드 2장 영역을 구성하며, 상대 홀카드는 뒷면으로 표시하되 쇼다운 시 공개한다. 메인 팟 및 사이드 팟 금액을 표시한다. 모든 UI 갱신은 IGameEventBroadcaster 구독을 통해 이루어지며, 카드 딜·카드 뒤집기·칩 이동에 대한 기본 애니메이션(DOTween 또는 코루틴)을 포함한다. 에픽 완료 시 Mock 이벤트를 순차 발행하여 화면이 올바르게 갱신되는지 육안 검증한다."
+    },
+    {
+      "id": 5,
+      "epic": "로컬 플레이어 입력 Gateway 및 액션 UI",
+      "description": "IPlayerActionProvider를 구현하는 로컬 유저 입력 Gateway와, 이를 위한 액션 버튼 UI(View)를 함께 구축한다. 액션 UI는 Fold·Check·Call·Raise(Bet) 버튼과 레이즈 금액 슬라이더(최소 레이즈 ~ 올인)로 구성되며, Director가 해당 플레이어의 턴을 요청할 때만 활성화된다. 현재 콜 금액, 최소 레이즈 금액, 남은 칩 등 맥락 정보를 버튼 레이블에 반영한다(예: 'Call 200', 'Raise to 600'). 유저가 버튼을 클릭하면 Gateway가 async 대기를 해제하며 선택된 액션을 Director에 반환한다. 유효하지 않은 액션 조합은 버튼 비활성화로 사전 차단한다. 에픽 완료 시 AI 1명과 로컬 플레이어 1명이 참여하는 최소 게임에서 버튼 조작으로 한 핸드를 완료할 수 있음을 검증한다."
+    },
+    {
+      "id": 6,
+      "epic": "로컬 게임 세션 조립 및 통합",
+      "description": "위 에픽들에서 만든 모든 컴포넌트를 조립하여 완전한 로컬 싱글 플레이어 세션을 구성한다. 게임 시작 시 참가 인원(2~10명)·시작 칩·블라인드 레벨을 설정할 수 있는 간이 로비 UI를 제공한다. 로비에서 '게임 시작' 버튼을 누르면 GameSessionBootstrapper가 Director, LocalGameEventBroadcaster, 로컬 플레이어 Gateway 1개 + AI Gateway N개, 모든 View를 생성·연결하고 첫 핸드를 시작한다. 핸드 종료 후 자동으로 딜러 버튼을 이동하여 다음 핸드를 개시하며, 칩이 0인 플레이어는 탈락 처리한다. 최후 1인이 남거나 유저가 탈락하면 결과 화면을 표시하고 로비로 복귀한다. 에픽 완료(= 마일스톤 2 검증) 시 유저 1명 + AI 최대 9명이 참여하는 풀 게임을 프리플롭부터 쇼다운까지 여러 핸드에 걸쳐 끝까지 플레이할 수 있음을 확인한다."
+    }
+  ]
+}
+```

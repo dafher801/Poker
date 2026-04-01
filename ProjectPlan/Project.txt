@@ -1,0 +1,21 @@
+```json
+{
+  "project": [
+    {
+      "id": 1,
+      "milestone": "코어 포커 엔진",
+      "description": "텍사스 홀덤의 순수 게임 로직을 구현한다. Entity 계층(카드, 덱, 핸드, 팟, 플레이어 데이터 등), Gateway 계층(덱 셔플용 랜덤 소스 인터페이스 및 테스트용 인메모리 구현체, 게임 상태 저장소 인터페이스 및 인메모리 구현체, 플레이어 액션 입력 인터페이스 IPlayerActionProvider, 게임 상태 출력 인터페이스 IGameEventBroadcaster), Usecase 계층(핸드 평가·족보 판정, 베팅 라운드 진행, 팟 관리·사이드 팟 분배, 승자 판정)을 모두 완성한다. Unity 렌더링이나 네트워크에 의존하지 않는 순수 C# 로직이며, Gateway 인터페이스의 테스트용 스텁 구현체와 에디터 테스트 러너를 통해 프리플롭-플롭-턴-리버-쇼다운 전 과정의 규칙이 정확히 동작하는지 검증한다."
+    },
+    {
+      "id": 2,
+      "milestone": "싱글 플레이 — UI 및 AI",
+      "description": "코어 포커 엔진 위에 구체적 Gateway 구현체(로컬 유저 입력 Gateway, AI 의사결정 Gateway — 둘 다 IPlayerActionProvider 구현), Director(게임 흐름 상태 머신, 턴 관리), View(테이블·카드·칩·플레이어 슬롯·액션 버튼 UI)를 구축하여 최대 10명(유저 1 + AI 9)이 참여하는 로컬 싱글 플레이어 게임을 완성한다. Director는 게임 상태 변경을 IGameEventBroadcaster 인터페이스를 통해 발행하고, View는 이 인터페이스를 구독하여 화면을 갱신하는 구조로 설계한다. 이로써 입력(IPlayerActionProvider)과 출력(IGameEventBroadcaster) 양방향 모두 추상화되어, 이후 네트워크 기반 구현체가 추가되더라도 기존 Director·View 코드를 수정할 필요가 없다. 빌드를 실행하여 AI 상대와 한 판의 텍사스 홀덤을 프리플롭부터 쇼다운까지 끝까지 플레이할 수 있으면 검증 완료이다."
+    },
+    {
+      "id": 3,
+      "milestone": "멀티플레이 — Photon 네트워크",
+      "description": "Photon(PUN 2 또는 Fusion)을 사용하여 온라인 멀티플레이를 구현한다. 로비 UI·룸 생성 및 참가, 호스트 권한 게임 로직 실행(호스트에서만 Director·Usecase 구동), 네트워크 Gateway 구현체(IPlayerActionProvider를 구현하는 RemotePlayerActionGateway — 클라이언트 액션을 호스트로 전송, IGameEventBroadcaster를 구현하는 NetworkEventBroadcaster — 호스트 게임 상태를 클라이언트로 동기화), 빈 슬롯 AI 자동 충원, 연결 끊김 처리를 포함한다. 비-호스트 클라이언트의 View는 로컬 Director 없이 NetworkEventBroadcaster가 제공하는 IGameEventBroadcaster를 구독하여 화면을 갱신하므로 마일스톤 2의 View 코드를 그대로 재사용한다. 별도 기기 2대 이상에서 같은 방에 접속해 한 판의 텍사스 홀덤을 완료할 수 있으면 검증 완료이다."
+    }
+  ]
+}
+```

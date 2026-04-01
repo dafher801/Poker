@@ -1,0 +1,62 @@
+```json
+{
+  "id": 1,
+  "description": "Photon PUN 2 SDK를 프로젝트에 설치하고, AppId 설정·서버 연결·해제·기본 콜백(OnConnectedToMaster, OnJoinedRoom, OnPlayerEnteredRoom, OnPlayerLeftRoom 등)을 래핑하는 네트워크 서비스 클래스를 구현한다. 이 에픽이 완료되면 앱 실행 시 Photon 마스터 서버에 성공적으로 연결되고, 연결 상태를 로그로 확인할 수 있어야 한다.",
+  "epic": [
+    {
+      "id": 1,
+      "task": "Photon PUN 2 SDK 설치",
+      "layer": "None",
+      "description": "Unity Asset Store 또는 Package Manager를 통해 Photon PUN 2 Free 패키지를 프로젝트에 임포트한다. 임포트 후 Photon 관련 폴더(Photon, PhotonUnityNetworking 등)가 Assets 하위에 정상적으로 존재하는지 확인한다."
+    },
+    {
+      "id": 2,
+      "task": "Photon AppId 및 서버 리전 설정",
+      "layer": "None",
+      "description": "Photon 대시보드(dashboard.photonengine.com)에서 Realtime 앱을 생성하여 AppId를 발급받는다. Unity 에디터의 Window > Photon Unity Networking > PUN Wizard 또는 Assets/Photon/PhotonUnityNetworking/Resources/PhotonServerSettings 에셋에 AppId를 입력하고, Fixed Region을 'kr'(또는 프로젝트 타겟 리전)로 설정한다. 프로토콜은 UDP 기본값을 유지한다."
+    },
+    {
+      "id": 3,
+      "task": "NetworkConnectionState 정의",
+      "layer": "Entity",
+      "description": "네트워크 연결 상태를 표현하는 Entity 클래스를 작성한다.\n\n파일명: NetworkConnectionState.cs\n\n- enum NetworkConnectionStatus { Disconnected, ConnectingToMaster, ConnectedToMaster, JoiningLobby, InLobby, JoiningRoom, InRoom, Disconnecting }\n- class NetworkConnectionState: 현재 상태(NetworkConnectionStatus CurrentStatus), 로컬 플레이어 닉네임(string LocalPlayerName), 현재 방 이름(string CurrentRoomName), 현재 방 인원 수(int CurrentPlayerCount)를 프로퍼티로 보유한다.\n- CurrentStatus 변경 시 이전 상태와 동일하면 무시하는 가드 로직을 포함한다.\n- 상태 변경 시 외부에서 구독할 수 있도록 Action<NetworkConnectionStatus, NetworkConnectionStatus> OnStatusChanged 이벤트를 제공한다."
+    },
+    {
+      "id": 4,
+      "task": "INetworkGateway 인터페이스 정의",
+      "layer": "Gateway",
+      "description": "네트워크 Gateway의 계약을 정의하는 인터페이스를 작성한다.\n\n파일명: INetworkGateway.cs\n\n- void Connect(string playerName): 마스터 서버 연결 요청\n- void Disconnect(): 연결 해제 요청\n- void JoinLobby(): 로비 진입 요청\n- void CreateRoom(string roomName, int maxPlayers): 방 생성 요청\n- void JoinRoom(string roomName): 방 참가 요청\n- void LeaveRoom(): 방 퇴장 요청\n- 콜백 이벤트들:\n  - Action OnConnectedToMasterServer\n  - Action OnJoinedLobbyServer\n  - Action<string> OnRoomCreated\n  - Action<string> OnRoomJoined\n  - Action OnRoomLeft\n  - Action<int> OnPlayerEntered (actorNumber)\n  - Action<int> OnPlayerExited (actorNumber)\n  - Action<DisconnectCause> OnDisconnectedFromServer\n\n이 인터페이스는 Photon에 대한 직접 의존을 상위 계층에 노출하지 않기 위한 추상 경계 역할을 한다."
+    },
+    {
+      "id": 5,
+      "task": "PhotonNetworkGateway 구현",
+      "layer": "Gateway",
+      "description": "INetworkGateway를 구현하며, Photon PUN 2의 MonoBehaviourPunCallbacks를 상속하는 클래스를 작성한다.\n\n파일명: PhotonNetworkGateway.cs\n\n- MonoBehaviourPunCallbacks를 상속하고 INetworkGateway를 구현한다.\n- Connect(string playerName): PhotonNetwork.NickName을 설정한 후 PhotonNetwork.ConnectUsingSettings()를 호출한다.\n- Disconnect(): PhotonNetwork.Disconnect()를 호출한다.\n- JoinLobby(): PhotonNetwork.JoinLobby()를 호출한다.\n- CreateRoom(string roomName, int maxPlayers): RoomOptions(MaxPlayers = maxPlayers)를 설정하여 PhotonNetwork.CreateRoom()을 호출한다.\n- JoinRoom(string roomName): PhotonNetwork.JoinRoom()을 호출한다.\n- LeaveRoom(): PhotonNetwork.LeaveRoom()을 호출한다.\n- 아래의 PUN 콜백 메서드를 override하여 대응하는 이벤트를 Invoke한다:\n  - OnConnectedToMaster() → OnConnectedToMasterServer\n  - OnJoinedLobby() → OnJoinedLobbyServer\n  - OnCreatedRoom() → OnRoomCreated(PhotonNetwork.CurrentRoom.Name)\n  - OnJoinedRoom() → OnRoomJoined(PhotonNetwork.CurrentRoom.Name)\n  - OnLeftRoom() → OnRoomLeft\n  - OnPlayerEnteredRoom(Player newPlayer) → OnPlayerEntered(newPlayer.ActorNumber)\n  - OnPlayerLeftRoom(Player otherPlayer) → OnPlayerExited(otherPlayer.ActorNumber)\n  - OnDisconnected(DisconnectCause cause) → OnDisconnectedFromServer(cause)\n- 각 콜백에서 Debug.Log를 통해 이벤트 이름과 관련 정보를 출력한다."
+    },
+    {
+      "id": 6,
+      "task": "NetworkConnectionUsecase 구현",
+      "layer": "Usecase",
+      "description": "Gateway를 이용하여 연결 상태를 관리하는 Usecase 클래스를 작성한다.\n\n파일명: NetworkConnectionUsecase.cs\n\n- 생성자에서 INetworkGateway와 NetworkConnectionState를 주입받는다.\n- Initialize(): Gateway의 각 콜백 이벤트를 구독하여 NetworkConnectionState를 갱신하는 핸들러를 등록한다.\n  - OnConnectedToMasterServer → CurrentStatus = ConnectedToMaster\n  - OnJoinedLobbyServer → CurrentStatus = InLobby\n  - OnRoomCreated/OnRoomJoined → CurrentStatus = InRoom, CurrentRoomName 갱신\n  - OnRoomLeft → CurrentStatus = ConnectedToMaster, CurrentRoomName 초기화\n  - OnPlayerEntered → CurrentPlayerCount 증가\n  - OnPlayerExited → CurrentPlayerCount 감소\n  - OnDisconnectedFromServer → CurrentStatus = Disconnected, 모든 상태 초기화\n- Dispose(): 등록한 콜백 핸들러를 모두 해제한다.\n- RequestConnect(string playerName): 현재 상태가 Disconnected일 때만 Gateway.Connect()를 호출하고, CurrentStatus를 ConnectingToMaster로 변경한다.\n- RequestDisconnect(): 현재 상태가 Disconnected가 아닐 때만 Gateway.Disconnect()를 호출하고, CurrentStatus를 Disconnecting으로 변경한다."
+    },
+    {
+      "id": 7,
+      "task": "NetworkDirector 구현",
+      "layer": "Director",
+      "description": "앱 시작 시 네트워크 연결 흐름을 제어하고, 각 계층 객체를 조립하는 Director 클래스를 작성한다.\n\n파일명: NetworkDirector.cs\n\n- MonoBehaviour를 상속한다 (씬에 배치하여 앱 진입점 역할).\n- Awake()에서:\n  1. 같은 GameObject 또는 자식에 PhotonNetworkGateway 컴포넌트를 GetComponent 또는 AddComponent로 확보한다.\n  2. NetworkConnectionState 인스턴스를 생성한다.\n  3. NetworkConnectionUsecase 인스턴스를 생성하고 Initialize()를 호출한다.\n  4. NetworkDebugView(후속 태스크)에 NetworkConnectionState 참조를 전달한다.\n- Start()에서: NetworkConnectionUsecase.RequestConnect()를 호출하여 기본 플레이어 이름(예: \"Player_\" + Random.Range(1000,9999))으로 마스터 서버 연결을 시작한다.\n- OnDestroy()에서: NetworkConnectionUsecase.Dispose()를 호출하여 리소스를 정리한다."
+    },
+    {
+      "id": 8,
+      "task": "NetworkDebugView 구현",
+      "layer": "View",
+      "description": "연결 상태를 화면에 표시하여 검증할 수 있게 하는 View 클래스를 작성한다.\n\n파일명: NetworkDebugView.cs\n\n- MonoBehaviour를 상속한다.\n- public 메서드 Bind(NetworkConnectionState state)를 제공하여 Director로부터 상태 객체를 주입받는다.\n- Bind 시 NetworkConnectionState.OnStatusChanged 이벤트를 구독한다.\n- 상태 변경 시 Debug.Log로 '[Network] Status changed: {oldStatus} → {newStatus}' 형식의 로그를 출력한다.\n- OnGUI()를 사용하여 화면 좌상단에 현재 연결 상태(CurrentStatus), 플레이어 닉네임(LocalPlayerName), 방 이름(CurrentRoomName), 방 인원(CurrentPlayerCount)을 실시간으로 표시한다.\n- OnDestroy()에서 이벤트 구독을 해제한다."
+    },
+    {
+      "id": 9,
+      "task": "네트워크 테스트 씬 구성",
+      "layer": "None",
+      "description": "마일스톤 3 에픽 1의 동작을 검증하기 위한 Unity 씬을 구성한다.\n\n씬 이름: NetworkTestScene\n\n1. 빈 씬을 생성한다.\n2. 빈 GameObject 'NetworkManager'를 생성하고, NetworkDirector 컴포넌트와 NetworkDebugView 컴포넌트를 부착한다.\n3. Play Mode로 실행하여 다음을 확인한다:\n   - Console 창에 '[Network] Status changed: Disconnected → ConnectingToMaster' 로그가 출력되는지 확인\n   - 이어서 '[Network] Status changed: ConnectingToMaster → ConnectedToMaster' 로그가 출력되는지 확인\n   - 화면 좌상단에 'ConnectedToMaster' 상태가 표시되는지 확인\n   - PhotonNetwork.IsConnectedAndReady가 true인지 확인\n4. 검증 실패 시 PhotonServerSettings의 AppId와 리전 설정을 재확인한다."
+    }
+  ]
+}
+```

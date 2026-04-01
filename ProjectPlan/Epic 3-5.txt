@@ -1,0 +1,68 @@
+```json
+{
+  "id": 5,
+  "description": "호스트가 게임 시작을 트리거할 때, 룸 내 접속 플레이어 수가 최소 플레이 인원(2명)을 충족하되 빈 슬롯이 존재하면 마일스톤 1에서 구현한 AIPlayerActionGateway를 자동으로 할당하여 나머지 좌석을 AI로 채운다. 호스트는 게임 시작 전 AI 충원 여부 및 AI 수를 설정할 수 있으며, AI 슬롯은 다른 플레이어에게도 'AI' 라벨로 표시된다. 이 에픽이 완료되면 사람 2명 + AI 2명 구성 등 혼합 테이블에서 한 판을 정상 완료할 수 있어야 한다.",
+  "epic": [
+    {
+      "id": 1,
+      "task": "AIFillConfig",
+      "layer": "Entity",
+      "description": "AI 충원 설정을 담는 불변 데이터 클래스. bool IsAIFillEnabled(AI 충원 활성화 여부), int DesiredTotalPlayers(AI 포함 목표 인원, 2~10 범위 클램프)를 필드로 갖는다. 생성자에서 DesiredTotalPlayers가 2 미만이면 2로, 10 초과이면 10으로 보정한다. CalculateAICount(int currentHumanCount) 메서드를 제공하여 (DesiredTotalPlayers - currentHumanCount)를 0 이상으로 반환한다. IsAIFillEnabled가 false면 항상 0을 반환한다."
+    },
+    {
+      "id": 2,
+      "task": "SeatSlotInfo",
+      "layer": "Entity",
+      "description": "테이블 좌석 하나의 상태를 나타내는 데이터 클래스. int SeatIndex, SeatOccupantType Occupant(enum: Empty, Human, AI), string DisplayName 필드를 갖는다. 기존 마일스톤 1·2에서 사용하던 플레이어 식별 구조가 있다면 이를 확장하여 AI/Human 구분 필드를 추가하는 형태로 작성한다. IsOccupied, IsAI 등의 편의 프로퍼티를 제공한다."
+    },
+    {
+      "id": 3,
+      "task": "AIFillConfigSyncGateway",
+      "layer": "Gateway",
+      "description": "Photon 룸 커스텀 프로퍼티를 통해 AIFillConfig를 동기화하는 게이트웨이. 호스트가 설정한 AIFillConfig를 Hashtable로 직렬화하여 RoomProperties에 기록하는 Save 메서드, 룸 프로퍼티에서 읽어 AIFillConfig 인스턴스를 복원하는 Load 메서드를 제공한다. 키 접두사는 'aifill_'로 한다. OnRoomPropertiesUpdate 콜백을 구독하여 변경 시 이벤트(Action<AIFillConfig>)를 발행한다."
+    },
+    {
+      "id": 4,
+      "task": "SeatAssignmentGateway",
+      "layer": "Gateway",
+      "description": "테이블 전체 좌석 배치(SeatSlotInfo 배열, 최대 10개)를 Photon 룸 커스텀 프로퍼티로 동기화하는 게이트웨이. 호스트가 좌석 배치를 갱신하면 직렬화하여 RoomProperties에 기록하고, 클라이언트는 OnRoomPropertiesUpdate를 통해 최신 좌석 배치를 수신한다. 각 좌석의 OccupantType과 DisplayName을 JSON 또는 구분자 직렬화로 저장한다. 변경 시 Action<SeatSlotInfo[]> 이벤트를 발행한다."
+    },
+    {
+      "id": 5,
+      "task": "CalculateAIFillUsecase",
+      "layer": "Usecase",
+      "description": "현재 접속 중인 인간 플레이어 수와 AIFillConfig를 입력받아, AI로 채워야 할 좌석 목록을 산출하는 유스케이스. 1) 인간 플레이어 수가 2명 미만이면 게임 시작 불가 결과를 반환한다. 2) AIFillConfig.CalculateAICount를 호출하여 필요한 AI 수를 구한다. 3) 빈 좌석(SeatSlotInfo에서 Empty인 것)을 낮은 인덱스 순으로 필요한 수만큼 선택하여 반환한다. 반환 타입은 AIFillResult(bool CanStart, List<int> AISeatIndices, string DenyReason)로 한다."
+    },
+    {
+      "id": 6,
+      "task": "AssignAIPlayersUsecase",
+      "layer": "Usecase",
+      "description": "CalculateAIFillUsecase가 산출한 AI 좌석 인덱스 리스트를 받아, 각 좌석에 AI 플레이어를 할당하는 유스케이스. 좌석 인덱스별로 SeatSlotInfo를 (AI, 'AI #{index}') 형태로 갱신하고, 마일스톤 1에서 구현한 AIPlayerActionGateway 인스턴스를 좌석 인덱스에 매핑하여 Dictionary<int, IPlayerActionGateway> 형태로 반환한다. 기존 게임 루프가 이 딕셔너리를 통해 AI 턴에 AIPlayerActionGateway를 호출할 수 있도록 인터페이스를 맞춘다."
+    },
+    {
+      "id": 7,
+      "task": "MixedTableGameStartDirector",
+      "layer": "Director",
+      "description": "호스트의 게임 시작 요청을 처리하는 디렉터. 흐름: 1) SeatAssignmentGateway에서 현재 좌석 배치를 로드한다. 2) AIFillConfigSyncGateway에서 AI 설정을 로드한다. 3) CalculateAIFillUsecase를 실행하여 시작 가능 여부와 AI 좌석을 판정한다. 4) 시작 불가면 View에 사유를 전달한다. 5) 시작 가능하면 AssignAIPlayersUsecase로 AI를 배치하고 SeatAssignmentGateway로 전체 좌석 배치를 동기화한다. 6) 기존 마일스톤 2의 게임 시작 흐름(딜러 배정, 블라인드 등)을 트리거한다. 7) 게임 루프에 인간 플레이어용 IPlayerActionGateway와 AI용 IPlayerActionGateway를 좌석 매핑과 함께 전달한다."
+    },
+    {
+      "id": 8,
+      "task": "AIFillSettingsView",
+      "layer": "View",
+      "description": "로비(대기실) 화면에서 호스트에게만 표시되는 AI 설정 패널 UI. Toggle: 'AI 자동 충원' 활성화/비활성화. Slider 또는 IntField: '목표 인원' (2~10, 기본값 방 최대 인원). 설정 변경 시 MixedTableGameStartDirector를 통해 AIFillConfigSyncGateway에 저장한다. 호스트가 아닌 클라이언트에게는 이 패널을 비활성화(SetActive false)한다. Photon MasterClient 여부로 호스트를 판별한다."
+    },
+    {
+      "id": 9,
+      "task": "SeatSlotView",
+      "layer": "View",
+      "description": "로비 및 게임 테이블 화면의 각 좌석 슬롯 UI를 갱신하는 뷰. SeatAssignmentGateway의 변경 이벤트를 구독하여 SeatSlotInfo 배열을 수신한다. 각 슬롯에 대해: Empty면 '빈 자리' 텍스트, Human이면 플레이어 닉네임, AI이면 'AI' 라벨(별도 색상 또는 아이콘)을 표시한다. 게임 중에는 AI 슬롯에도 칩·카드 등 기존 플레이어 HUD가 동일하게 표시되도록 기존 PlayerHudView와 연동한다."
+    },
+    {
+      "id": 10,
+      "task": "GameStartDenyPopupView",
+      "layer": "View",
+      "description": "호스트가 게임 시작을 시도했으나 최소 인원 미달 등으로 시작 불가한 경우 표시되는 팝업 UI. MixedTableGameStartDirector로부터 DenyReason 문자열을 전달받아 텍스트로 표시한다. '확인' 버튼 클릭 시 팝업을 닫는다. Canvas 최상위에 모달로 표시하여 다른 조작을 차단한다."
+    }
+  ]
+}
+```

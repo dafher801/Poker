@@ -1,0 +1,46 @@
+
+
+```json
+{
+  "id": 6,
+  "description": "Usecase 계층. 베팅 라운드 종료 시점마다 각 플레이어의 베팅액을 수집하여 메인 팟과 사이드 팟을 올바르게 산출하는 PotManager를 구현한다. (1) 올인 플레이어가 없는 단순 케이스에서는 단일 메인 팟. (2) 올인 플레이어가 1명 이상일 때, 올인 금액 기준으로 사이드 팟을 분할 생성. (3) 각 Pot 객체는 총 금액과 해당 팟에 참여 자격이 있는 플레이어 ID 목록을 보유. (4) 라운드가 진행됨에 따라 팟이 누적·병합되는 시나리오를 올바르게 처리. 3명 이상 올인이 겹치는 복합 사이드 팟 케이스를 포함하여 검증한다.",
+  "epic": [
+    {
+      "id": 1,
+      "task": "Pot 엔티티 정의",
+      "layer": "Entity",
+      "description": "Pot.cs — 단일 팟을 표현하는 데이터 클래스. 필드: int Amount(팟 총 금액), List<int> EligiblePlayerIds(이 팟을 받을 자격이 있는 플레이어 ID 목록). Amount는 0 미만이 될 수 없도록 세터에서 보호한다. EligiblePlayerIds에 중복 ID가 추가되지 않도록 보호한다. AddAmount(int value), RemovePlayer(int playerId) 등 자기 자신의 데이터 무결성만 책임지는 메서드를 제공한다."
+    },
+    {
+      "id": 2,
+      "task": "PlayerBetInfo 엔티티 정의",
+      "layer": "Entity",
+      "description": "PlayerBetInfo.cs — 한 베팅 라운드에서 개별 플레이어의 베팅 정보를 담는 데이터 클래스. 필드: int PlayerId, int BetAmount(이번 라운드 누적 베팅액), bool IsAllIn, bool IsFolded. BetAmount는 0 미만이 될 수 없도록 보호한다."
+    },
+    {
+      "id": 3,
+      "task": "PotCalculator 유스케이스 구현",
+      "layer": "Usecase",
+      "description": "PotCalculator.cs — 핵심 팟 분배 알고리즘을 담당하는 정적/순수 클래스. 메서드: List<Pot> CalculatePots(List<PlayerBetInfo> bets). 알고리즘: (1) 폴드하지 않은 플레이어들의 베팅 정보를 올인 금액 오름차순으로 정렬한다. (2) 가장 낮은 올인 금액부터 순회하며 각 참여자로부터 해당 금액만큼 차감하여 하나의 Pot을 생성하고, 해당 금액 이상 베팅한(폴드하지 않은) 모든 플레이어를 EligiblePlayerIds에 추가한다. (3) 올인이 아닌 플레이어들의 남은 베팅액은 마지막 팟에 합산한다. (4) 올인 플레이어가 없으면 단일 메인 팟 하나만 반환한다. (5) 금액이 0인 팟은 생성하지 않는다. 폴드한 플레이어의 베팅액은 팟 총액에는 포함하되 EligiblePlayerIds에서는 제외한다."
+    },
+    {
+      "id": 4,
+      "task": "PotManager 유스케이스 구현",
+      "layer": "Usecase",
+      "description": "PotManager.cs — 게임 전체 수명 동안 팟 상태를 관리하는 클래스. 필드: List<Pot> CurrentPots(현재까지 누적된 팟 목록). 메서드: (1) void CollectBets(List<PlayerBetInfo> roundBets) — PotCalculator.CalculatePots를 호출하여 이번 라운드의 팟 리스트를 얻고, 기존 CurrentPots와 병합한다. 병합 규칙: EligiblePlayerIds 집합이 동일한 팟끼리 금액을 합산하고, 동일 집합이 없으면 새 팟으로 추가한다. (2) List<Pot> GetPots() — 현재 팟 목록의 복사본 반환. (3) int GetTotalPot() — 모든 팟 금액의 합계 반환. (4) void Reset() — 새 핸드 시작 시 팟 초기화. (5) void RemovePlayer(int playerId) — 특정 플레이어를 모든 팟의 EligiblePlayerIds에서 제거(폴드 시 호출용)."
+    },
+    {
+      "id": 5,
+      "task": "PotCalculator 단위 테스트",
+      "layer": "None",
+      "description": "Unity Test Runner(EditMode)용 테스트 스크립트 PotCalculatorTests.cs를 작성한다. 다음 시나리오를 검증한다: (1) 올인 없이 3명이 동일 금액 베팅 → 단일 메인 팟, 금액·참여자 확인. (2) 1명 올인(낮은 금액) + 2명 콜 → 메인 팟 1개 + 사이드 팟 1개, 각각의 금액과 EligiblePlayerIds 확인. (3) 3명 이상 서로 다른 금액으로 올인 → 메인 팟 + 복수 사이드 팟, 각 금액과 자격 플레이어 정확성 확인. (4) 일부 플레이어 폴드 시 해당 플레이어 베팅액은 팟에 포함되지만 EligiblePlayerIds에서 제외되는지 확인. (5) 전원 동일 금액 올인 → 단일 팟 확인."
+    },
+    {
+      "id": 6,
+      "task": "PotManager 통합 테스트",
+      "layer": "None",
+      "description": "Unity Test Runner(EditMode)용 테스트 스크립트 PotManagerTests.cs를 작성한다. 다음 시나리오를 검증한다: (1) 프리플랍 베팅 수집 후 GetPots/GetTotalPot 정확성. (2) 프리플랍 → 플랍 → 턴 → 리버 총 4회 CollectBets 호출 시 팟이 올바르게 누적·병합되는지 확인. (3) 여러 라운드에 걸쳐 올인 플레이어가 발생하는 복합 시나리오에서 사이드 팟이 정확히 분리·누적되는지 확인. (4) Reset 후 팟이 비어 있는지 확인. (5) RemovePlayer 호출 시 모든 팟에서 해당 플레이어가 제거되는지 확인."
+    }
+  ]
+}
+```

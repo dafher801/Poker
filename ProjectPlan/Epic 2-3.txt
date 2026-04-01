@@ -1,0 +1,44 @@
+```json
+{
+  "id": 3,
+  "description": "IPlayerActionProvider를 구현하는 AI 플레이어 Gateway를 작성한다. AI는 현재 핸드 강도(핸드 랭크 평가 Usecase 활용), 팟 오즈, 포지션, 베팅 상황 등을 종합하여 Fold/Check/Call/Raise 중 하나를 결정한다. 최소한 보수적(Tight-Passive)·공격적(Loose-Aggressive) 두 가지 성향 프리셋을 지원하여, 게임 세션 생성 시 AI 플레이어마다 다른 성향을 부여할 수 있도록 한다. 레이즈 금액은 팟 대비 비율 기반으로 결정하며, 의사결정에 약간의 랜덤성을 부여하여 예측 불가능성을 확보한다. 액션 반환 시 인위적 딜레이(0.5~2초)를 포함해 자연스러운 플레이 속도를 구현한다. 에픽 완료 시 AI 9명끼리 자동 대전하여 핸드가 정상 종료됨을 검증한다.",
+  "epic": [
+    {
+      "id": 1,
+      "task": "AiPersonalityProfile 엔티티 작성",
+      "layer": "Entity",
+      "description": "AI 성향을 정의하는 데이터 클래스 AiPersonalityProfile.cs를 작성한다. 포함 필드: (1) 핸드 참여 문턱값(handThreshold, 0~1 float — 낮을수록 넓은 핸드 레인지), (2) 공격성 계수(aggressionFactor, 0~1 float — 높을수록 레이즈 빈도 증가), (3) 블러프 확률(bluffFrequency, 0~1 float), (4) 레이즈 팟 비율 범위(raiseMinPotRatio, raiseMaxPotRatio — float), (5) 콜 팟오즈 마진(callOddsMargin, float — 필요 팟오즈 대비 얼마나 여유를 두고 콜할지). 불변(immutable) 구조체 또는 readonly 클래스로 설계한다. 정적 팩토리 메서드 두 개를 제공한다: CreateTightPassive()는 좁은 핸드 레인지·낮은 공격성·낮은 블러프 값을, CreateLooseAggressive()는 넓은 핸드 레인지·높은 공격성·높은 블러프 값을 반환한다. 모든 필드는 0~1 범위 클램핑 유효성 검사를 생성자에서 수행한다."
+    },
+    {
+      "id": 2,
+      "task": "AiHandStrengthEvaluationUsecase 작성",
+      "layer": "Usecase",
+      "description": "AI 의사결정용 핸드 강도 평가 유즈케이스 AiHandStrengthEvaluationUsecase.cs를 작성한다. 기존 핸드 랭크 평가 Usecase(HandEvaluator 등)를 내부에서 활용한다. 메서드 float EvaluateStrength(Card[] holeCards, Card[] communityCards)를 제공하며, 반환값은 0(최약)~1(최강)의 정규화된 핸드 강도이다. 프리플랍(커뮤니티 카드 0장)에서는 홀카드 조합의 사전 확률 테이블(프리플랍 핸드 랭킹 — 포켓 에이스=1.0, 72o 급=최하위 등)을 기반으로 강도를 산출한다. 플랍 이후에는 현재 메이드 핸드 랭크를 HandRank 최댓값(RoyalFlush) 대비 비율로 정규화하고, 드로우 가능성(플러시 드로우 4장, 스트레이트 오픈엔디드 등)을 감지해 보정값을 가산한다. 외부 의존은 HandEvaluator(또는 동일 역할의 Usecase)와 Card·HandRank Entity뿐이어야 한다."
+    },
+    {
+      "id": 3,
+      "task": "PotOddsCalculationUsecase 작성",
+      "layer": "Usecase",
+      "description": "팟 오즈 계산 유즈케이스 PotOddsCalculationUsecase.cs를 작성한다. 메서드 float CalculatePotOdds(int currentPotSize, int amountToCall)를 제공하며, 반환값은 amountToCall / (currentPotSize + amountToCall)로 계산되는 필요 승률(0~1)이다. amountToCall이 0인 경우(체크 가능) 0을 반환한다. 추가로 float CalculateRaisePotRatio(int currentPotSize, int raiseAmount)를 제공하여 레이즈 금액이 팟 대비 몇 배인지 반환한다. 순수 계산 로직만 포함하며, Entity의 금액 관련 값 이외에 외부 의존이 없어야 한다."
+    },
+    {
+      "id": 4,
+      "task": "AiActionDecisionUsecase 작성",
+      "layer": "Usecase",
+      "description": "AI 액션 결정 핵심 로직 AiActionDecisionUsecase.cs를 작성한다. 입력 파라미터 DTO: AiDecisionContext { float handStrength, float potOdds, int potSize, int amountToCall, int playerChips, int minRaise, int maxRaise, int positionIndex(0=얼리~max=레이트), int totalPlayers, AiPersonalityProfile personality }. 반환 DTO: AiDecisionResult { PlayerActionType action(Fold/Check/Call/Raise), int raiseAmount }. 결정 로직 흐름: (1) 유효 핸드 강도 = handStrength + personality.bluffFrequency 기반 랜덤 보정(System.Random 주입). (2) 폴드 판정: 유효 핸드 강도 < personality.handThreshold이고 potOdds > 유효 강도이면 Fold. (3) 콜/체크 판정: potOdds가 0이면 Check 후보, 아니면 유효 강도 > potOdds - callOddsMargin이면 Call 후보. (4) 레이즈 판정: 유효 강도가 personality.handThreshold * (1 + aggressionFactor)를 초과하면 Raise 후보, 레이즈 금액 = potSize * Random.Range(raiseMinPotRatio, raiseMaxPotRatio)를 minRaise~maxRaise로 클램핑. (5) 포지션 보정: 레이트 포지션일수록 레이즈 문턱값을 약간 낮춘다(positionIndex / totalPlayers * 0.05). (6) 최종 랜덤 퍼터베이션: 결정된 액션에 대해 5~10% 확률로 한 단계 공격적/보수적 액션으로 전환하여 예측 불가능성 확보. 모든 랜덤은 생성자 주입된 System.Random을 사용해 테스트 시 시드 고정이 가능하도록 한다."
+    },
+    {
+      "id": 5,
+      "task": "AiPlayerActionProvider Gateway 작성",
+      "layer": "Gateway",
+      "description": "IPlayerActionProvider 인터페이스를 구현하는 AiPlayerActionProvider.cs를 작성한다. 생성자에서 AiPersonalityProfile, AiHandStrengthEvaluationUsecase, PotOddsCalculationUsecase, AiActionDecisionUsecase를 주입받는다. GetAction(또는 인터페이스에 정의된 액션 요청 메서드) 호출 시: (1) 현재 게임 상태(홀카드, 커뮤니티카드, 팟, 콜 비용, 칩, 포지션 등)를 읽어 각 Usecase에 전달. (2) AiHandStrengthEvaluationUsecase로 핸드 강도 산출. (3) PotOddsCalculationUsecase로 팟 오즈 산출. (4) AiDecisionContext를 조립하여 AiActionDecisionUsecase에 전달, AiDecisionResult 수신. (5) 인위적 딜레이: async/await 또는 코루틴으로 UnityEngine.Random.Range(0.5f, 2.0f)초 대기 후 결과 반환. 반환 타입은 IPlayerActionProvider 인터페이스 규격(Task<PlayerAction> 등)에 맞춘다. MonoBehaviour를 상속하지 않는다."
+    },
+    {
+      "id": 6,
+      "task": "AiAutoMatchDirector 작성 및 검증",
+      "layer": "Director",
+      "description": "AI 9명 자동 대전 검증용 AiAutoMatchDirector.cs를 작성한다. 역할: (1) 9개의 AiPlayerActionProvider 인스턴스를 생성하되, 성향을 혼합 배치한다(예: Tight-Passive 4명, Loose-Aggressive 5명). (2) 기존 게임 세션/라운드 진행 Director(또는 Usecase)에 9명의 IPlayerActionProvider를 등록하고 게임을 시작한다. (3) 핸드 단위로 진행 결과를 콘솔 로그(Debug.Log)로 출력한다 — 각 스트리트별 액션 내역, 쇼다운 결과, 칩 이동. (4) 연속 10핸드 이상 자동 진행하여 예외 없이 완료되는지, 칩 총합이 보존되는지, 폴드·콜·레이즈가 골고루 발생하는지 확인할 수 있도록 요약 통계를 로그로 남긴다. (5) Unity 에디터에서 Play 버튼만으로 실행 가능하도록 빈 씬에 부착할 수 있는 MonoBehaviour 래퍼 또는 [RuntimeInitializeOnLoadMethod]를 활용한다. 이 Director는 View 계층 없이 동작하며, 검증 완료 후 프로덕션 빌드에서는 제외해도 무방한 테스트 전용 코드이다."
+    }
+  ]
+}
+```

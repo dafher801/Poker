@@ -1,0 +1,74 @@
+```json
+{
+  "id": 3,
+  "description": "단일 베팅 라운드의 진행 로직과, 멀티 팟(사이드 팟) 관리 로직을 구현한다.",
+  "epic": [
+    {
+      "id": 1,
+      "task": "ActionType 열거형 및 PlayerAction 구조체 정의",
+      "layer": "Entity",
+      "description": "ActionType 열거형(Fold, Check, Call, Raise, AllIn)을 정의한다. PlayerAction 구조체를 정의하며, 필드는 string PlayerId, ActionType Type, int Amount로 구성한다. Amount는 Raise·AllIn 시 총 베팅 금액을, Call 시 콜 금액을 나타내며, Fold·Check 시 0이다. 파일명: Assets/Scripts/Entity/PlayerAction.cs"
+    },
+    {
+      "id": 2,
+      "task": "Pot 엔티티 정의",
+      "layer": "Entity",
+      "description": "Pot 클래스를 정의한다. 필드는 int Amount(팟 총액), List<string> EligiblePlayerIds(이 팟에 대한 수령 자격이 있는 플레이어 ID 목록)로 구성한다. 메인 팟과 사이드 팟 모두 동일한 Pot 객체로 표현한다. GameState에 List<Pot> Pots 필드를 추가한다(기존 GameState 파일 수정). 파일명: Assets/Scripts/Entity/Pot.cs"
+    },
+    {
+      "id": 3,
+      "task": "LegalActionSet 구조체 정의",
+      "layer": "Entity",
+      "description": "ActionValidator가 반환할 합법 액션 정보를 담는 LegalActionSet 구조체를 정의한다. 필드는 List<ActionType> AvailableActions(수행 가능한 액션 종류 목록), int CallAmount(콜에 필요한 금액, 콜 불가 시 0), int MinRaiseAmount(최소 레이즈 총액), int MaxRaiseAmount(최대 레이즈 총액 = 올인 금액)로 구성한다. 파일명: Assets/Scripts/Entity/LegalActionSet.cs"
+    },
+    {
+      "id": 4,
+      "task": "IPlayerActionProvider 인터페이스 정의",
+      "layer": "Gateway",
+      "description": "플레이어의 액션을 비동기로 요청·수신하는 인터페이스를 정의한다. 메서드: Task<PlayerAction> GetAction(string playerId, LegalActionSet legalActions). 이 인터페이스의 구현체는 로컬 AI, 로컬 UI 입력, 네트워크 원격 플레이어 등이 될 수 있으며, 이 태스크에서는 인터페이스만 정의한다. 파일명: Assets/Scripts/Gateway/IPlayerActionProvider.cs"
+    },
+    {
+      "id": 5,
+      "task": "IGameEventBroadcaster 인터페이스 정의",
+      "layer": "Gateway",
+      "description": "게임 진행 이벤트를 외부(View, 네트워크 등)에 알리는 인터페이스를 정의한다. 메서드: void OnPlayerActed(string playerId, PlayerAction action), void OnBettingRoundStarted(Phase phase), void OnBettingRoundEnded(Phase phase), void OnPotUpdated(List<Pot> pots). 이 태스크에서는 인터페이스만 정의한다. 파일명: Assets/Scripts/Gateway/IGameEventBroadcaster.cs"
+    },
+    {
+      "id": 6,
+      "task": "ActionValidator 구현",
+      "layer": "Usecase",
+      "description": "ActionValidator 클래스를 구현한다. 핵심 메서드: LegalActionSet GetLegalActions(GameState state, string playerId). 로직 상세: (1) 해당 플레이어의 PlayerState를 조회하여 Status가 Active인지 확인. (2) Fold는 항상 AvailableActions에 포함. (3) 현재 라운드 최고 베팅액(state에서 Active/AllIn 플레이어들의 CurrentBet 최댓값)과 해당 플레이어의 CurrentBet을 비교: 같으면 Check 가능. (4) 최고 베팅액 > 자신의 CurrentBet이면 Call 가능. CallAmount = 최고베팅액 - 자신의CurrentBet. 단, CallAmount >= 자신의 남은 칩이면 Call 대신 AllIn만 가능. (5) Raise: 최소 레이즈 총액 = 최고 베팅액 + LastRaiseSize(state에 기록). 자신의 칩 + CurrentBet >= 최소 레이즈 총액이면 Raise 가능. MinRaiseAmount = 최소 레이즈 총액, MaxRaiseAmount = 자신의 칩 + CurrentBet. (6) AllIn: 칩이 1 이상이면 항상 가능. GameState에 int LastRaiseSize 필드가 없다면 추가한다. 파일명: Assets/Scripts/Usecase/ActionValidator.cs"
+    },
+    {
+      "id": 7,
+      "task": "PotManager 구현",
+      "layer": "Usecase",
+      "description": "PotManager 클래스를 구현한다. 메서드 3개를 포함한다.\n\n(1) void CollectBets(GameState state): 모든 플레이어의 CurrentBet을 합산하여 state의 임시 수집 풀(혹은 직접 Pot에)에 반영한 뒤 각 플레이어의 CurrentBet을 0으로 초기화한다.\n\n(2) void CalculateSidePots(GameState state): 올인한 플레이어가 있는 경우 사이드 팟을 생성한다. 알고리즘: 해당 라운드에 베팅에 참여한 플레이어들의 베팅액을 오름차순 정렬. 가장 작은 베팅액부터 단계적으로 팟을 분리하며 각 Pot에 EligiblePlayerIds(해당 레벨 이상 베팅한 플레이어)를 기록한다. 올인 플레이어가 없으면 단일 메인 팟으로 유지한다.\n\n(3) List<(string PlayerId, int Amount)> DistributePots(List<Pot> pots, Dictionary<string, HandEvaluation> evaluations): 각 Pot에 대해 EligiblePlayerIds 중 evaluations의 HandEvaluation이 가장 높은 플레이어에게 해당 Pot.Amount를 지급. 동점 시 균등 분배하며 나머지 칩은 딜러에 가장 가까운(포지션 인덱스가 낮은) 플레이어에게 지급. 결과를 (PlayerId, Amount) 리스트로 반환한다.\n\n파일명: Assets/Scripts/Usecase/PotManager.cs"
+    },
+    {
+      "id": 8,
+      "task": "BettingRoundUsecase 구현",
+      "layer": "Usecase",
+      "description": "BettingRoundUsecase 클래스를 구현한다. 핵심 메서드: async Task RunBettingRound(GameState state, IPlayerActionProvider actionProvider, IGameEventBroadcaster broadcaster).\n\n로직 상세:\n(1) 첫 액션 플레이어 결정: PreFlop이면 BB 다음 시트(UTG), PostFlop(Flop/Turn/River)이면 딜러 다음 첫 Active 플레이어.\n(2) 순환 루프: 현재 플레이어가 Folded이거나 AllIn이면 건너뛴다.\n(3) ActionValidator.GetLegalActions로 합법 액션을 구한 뒤 actionProvider.GetAction으로 플레이어 액션을 비동기 수신한다.\n(4) 받은 액션을 검증(합법 액션에 포함되는지, 금액 범위 내인지)하고 GameState에 적용한다: Fold→Status를 Folded로, Check→변경 없음, Call→CurrentBet과 Chips 갱신, Raise→CurrentBet·Chips·LastRaiseSize 갱신, AllIn→CurrentBet·Chips 갱신·Status를 AllIn으로.\n(5) broadcaster.OnPlayerActed 호출.\n(6) 종료 조건 확인: (a) Active 플레이어가 1명 이하, (b) 모든 Active 플레이어가 최소 1회 액션했고 CurrentBet이 모두 동일.\n(7) 루프 종료 후 PotManager.CollectBets와 CalculateSidePots를 호출하고 broadcaster.OnBettingRoundEnded 호출.\n\n파일명: Assets/Scripts/Usecase/BettingRoundUsecase.cs"
+    },
+    {
+      "id": 9,
+      "task": "ActionValidator 에디터 테스트 작성",
+      "layer": "None",
+      "description": "Unity Test Runner(EditMode)용 테스트 클래스를 작성한다. 파일명: Assets/Tests/EditMode/ActionValidatorTests.cs\n\n테스트 케이스:\n• 아무도 베팅하지 않은 상태에서 Check와 Raise가 가능한지 확인\n• 앞 플레이어가 레이즈한 뒤 Fold, Call, Raise(리레이즈)가 가능한지 확인\n• Call 금액이 남은 칩보다 클 때 Call 대신 AllIn만 표시되는지 확인\n• 최소 레이즈 금액이 직전 레이즈 크기 이상인지 확인(예: BB=100, 첫 레이즈 300 → 최소 리레이즈 총액 500)\n• 칩이 최소 레이즈 미만이지만 콜 이상인 경우 Raise 불가, Call·AllIn 가능 확인\n• 올인 상태 플레이어에게는 빈 액션 목록 반환 확인"
+    },
+    {
+      "id": 10,
+      "task": "PotManager 에디터 테스트 작성",
+      "layer": "None",
+      "description": "Unity Test Runner(EditMode)용 테스트 클래스를 작성한다. 파일명: Assets/Tests/EditMode/PotManagerTests.cs\n\n테스트 케이스:\n• CollectBets: 3명이 각각 100씩 베팅 → 팟 300, 모든 CurrentBet 0으로 초기화\n• CalculateSidePots 올인 없음: 단일 메인 팟 유지\n• CalculateSidePots 3명 서로 다른 올인(예: A=50, B=150, C=300): 메인 팟(50×3=150, 자격 A·B·C), 사이드 팟1(100×2=200, 자격 B·C), 사이드 팟2(150×1=150, 자격 C) 검증\n• DistributePots 메인 팟 단일 승자: 정확한 금액 지급\n• DistributePots 사이드 팟 포함: 각 팟별 별도 승자 지급\n• DistributePots 동점(스플릿 팟): 균등 분배 및 나머지 칩 딜러 근접 플레이어 지급 확인"
+    },
+    {
+      "id": 11,
+      "task": "BettingRoundUsecase 에디터 테스트 작성",
+      "layer": "None",
+      "description": "Unity Test Runner(EditMode)용 테스트 클래스를 작성한다. IPlayerActionProvider와 IGameEventBroadcaster의 Mock 구현체를 테스트 파일 내에 작성하여 사용한다. Mock IPlayerActionProvider는 미리 정의된 액션 시퀀스를 순차적으로 반환한다. 파일명: Assets/Tests/EditMode/BettingRoundUsecaseTests.cs\n\n테스트 케이스:\n• 체크-체크 종료: 2명 모두 Check → 라운드 정상 종료, 팟에 추가 금액 없음\n• 레이즈-콜 종료: P1 Raise → P2 Call → 라운드 종료, 팟 합산 정확\n• 폴드로 1명 남아 종료: 3명 중 2명 Fold → Active 1명 → 라운드 즉시 종료\n• 올인 포함 라운드: P1 Raise → P2 AllIn(칩 부족) → P1 Call → 라운드 종료 후 사이드 팟 생성 확인\n• 첫 액션 플레이어 결정: PreFlop에서 BB 다음 좌석이 첫 액션자인지, Flop에서 딜러 다음 좌석이 첫 액션자인지 확인\n• broadcaster 이벤트 호출 횟수·순서 검증: OnPlayerActed가 액션마다, OnBettingRoundEnded가 라운드 종료 시 정확히 호출되는지 확인"
+    }
+  ]
+}
+```

@@ -1,0 +1,74 @@
+```json
+{
+  "id": 2,
+  "description": "로비 화면(View)을 구현하여 룸 목록 조회, 룸 생성(방 이름·최대 인원 설정), 룸 참가, 룸 나가기 기능을 제공한다. 룸 내부에서는 현재 참가 플레이어 목록과 준비 상태를 표시하며, 호스트가 게임 시작 버튼을 눌러 인게임으로 전환할 수 있는 흐름까지 포함한다. 이 에픽이 완료되면 두 대 이상의 클라이언트가 같은 룸에 접속하여 서로의 닉네임을 확인하고 호스트가 게임 시작을 트리거할 수 있어야 한다.",
+  "epic": [
+    {
+      "id": 1,
+      "task": "LobbyRoomData 정의",
+      "layer": "Entity",
+      "description": "LobbyRoomData.cs — 로비 룸 목록에 표시할 룸 정보를 담는 불변 데이터 클래스. 필드: roomName(string), currentPlayerCount(int), maxPlayerCount(int), hostNickname(string), isOpen(bool). 생성자에서 maxPlayerCount는 2~10 범위로 클램핑한다."
+    },
+    {
+      "id": 2,
+      "task": "RoomPlayerData 정의",
+      "layer": "Entity",
+      "description": "RoomPlayerData.cs — 룸 내부에서 한 명의 플레이어를 나타내는 데이터 클래스. 필드: actorNumber(int), nickname(string), isHost(bool), isReady(bool). isHost인 플레이어는 isReady가 항상 true로 간주되도록 프로퍼티 로직을 포함한다."
+    },
+    {
+      "id": 3,
+      "task": "PhotonLobbyGateway 구현",
+      "layer": "Gateway",
+      "description": "PhotonLobbyGateway.cs — MonoBehaviourPunCallbacks를 상속하여 Photon 로비·룸 관련 API를 래핑하는 게이트웨이. 제공 메서드: JoinLobby(), GetRoomList() → List<LobbyRoomData>, CreateRoom(roomName, maxPlayers), JoinRoom(roomName), LeaveRoom(), GetCurrentRoomPlayers() → List<RoomPlayerData>, SetPlayerReady(bool), RequestStartGame(). Photon 콜백(OnRoomListUpdate, OnJoinedRoom, OnLeftRoom, OnPlayerEnteredRoom, OnPlayerLeftRoom, OnPlayerPropertiesUpdate, OnMasterClientSwitched)을 수신하여 C# event로 외부에 전파한다. Custom Properties 키로 'IsReady'를 사용한다."
+    },
+    {
+      "id": 4,
+      "task": "LobbyUsecase 구현",
+      "layer": "Usecase",
+      "description": "LobbyUsecase.cs — 로비 비즈니스 로직 담당. 메서드: ValidateRoomCreation(roomName, maxPlayers) → (bool isValid, string errorMessage) — 방 이름 공백·길이(1~20자) 검증, 최대 인원 2~10 범위 검증. CanStartGame(List<RoomPlayerData> players) → bool — 플레이어가 2명 이상이고 전원 Ready 상태인지 확인. FilterRoomList(List<LobbyRoomData>, searchQuery) → List<LobbyRoomData> — 검색어가 비어 있으면 전체 반환, 아니면 roomName 부분 일치 필터링."
+    },
+    {
+      "id": 5,
+      "task": "LobbyDirector 구현",
+      "layer": "Director",
+      "description": "LobbyDirector.cs — 로비 전체 흐름을 제어하는 중재자. PhotonLobbyGateway와 LobbyUsecase를 주입받는다. 상태: LobbyList, InRoom 두 가지. LobbyList 상태에서는 룸 목록 갱신·필터링·생성·참가 요청을 처리하고, InRoom 상태에서는 플레이어 목록 갱신·레디 토글·게임 시작 요청을 처리한다. Gateway 이벤트를 구독하여 View에 전달할 콜백(Action)을 노출한다: OnRoomListUpdated(List<LobbyRoomData>), OnRoomPlayersUpdated(List<RoomPlayerData>), OnJoinedRoom(), OnLeftRoom(), OnGameStartTriggered(). 게임 시작 시 PhotonNetwork.LoadLevel을 호출하지 않고 OnGameStartTriggered 이벤트만 발행하여 상위에서 씬 전환을 처리하도록 한다."
+    },
+    {
+      "id": 6,
+      "task": "LobbyPanelView 구현",
+      "layer": "View",
+      "description": "LobbyPanelView.cs — 로비 룸 목록 화면 UI를 담당하는 MonoBehaviour. 구성 요소: 룸 목록 ScrollView(Content에 RoomListItemView 프리팹을 동적 생성), 검색 InputField, '방 만들기' 버튼, '새로고침' 버튼. LobbyDirector.OnRoomListUpdated를 구독하여 룸 목록을 갱신한다. 각 룸 아이템 클릭 시 LobbyDirector에 JoinRoom을 요청한다. '방 만들기' 버튼 클릭 시 CreateRoomPopupView를 활성화한다. 검색 InputField 값 변경 시 LobbyDirector에 필터를 요청한다."
+    },
+    {
+      "id": 7,
+      "task": "RoomListItemView 구현",
+      "layer": "View",
+      "description": "RoomListItemView.cs — 룸 목록에서 하나의 룸 항목을 표시하는 프리팹용 MonoBehaviour. UI 요소: roomNameText(TMP_Text), playerCountText(TMP_Text, 'n/m' 형식), hostNameText(TMP_Text), joinButton(Button). SetData(LobbyRoomData) 메서드로 데이터를 바인딩한다. 룸이 가득 찬 경우(currentPlayerCount >= maxPlayerCount) joinButton을 비활성화하고 playerCountText 색상을 빨간색으로 변경한다. joinButton 클릭 시 외부에서 등록한 Action<string> onJoinClicked 콜백에 roomName을 전달한다."
+    },
+    {
+      "id": 8,
+      "task": "CreateRoomPopupView 구현",
+      "layer": "View",
+      "description": "CreateRoomPopupView.cs — 방 생성 팝업 UI MonoBehaviour. UI 요소: roomNameInputField(TMP_InputField), maxPlayerSlider(Slider, 범위 2~10, 정수 단위), maxPlayerValueText(TMP_Text, 슬라이더 값 표시), createButton(Button), cancelButton(Button), errorMessageText(TMP_Text). createButton 클릭 시 LobbyDirector에 방 생성을 요청하고, 유효성 검증 실패 시 errorMessageText에 메시지를 표시한다. cancelButton 또는 배경 클릭 시 팝업을 비활성화한다. 팝업 열릴 때 입력 필드를 초기화한다."
+    },
+    {
+      "id": 9,
+      "task": "RoomPanelView 구현",
+      "layer": "View",
+      "description": "RoomPanelView.cs — 룸 내부 화면 UI MonoBehaviour. UI 요소: roomTitleText(TMP_Text, 방 이름 표시), playerListContent(Transform, RoomPlayerSlotView 프리팹 동적 생성), readyButton(Button, 토글 동작 — 텍스트가 '준비'/'준비 해제'로 전환), leaveButton(Button), startGameButton(Button, 호스트만 활성). LobbyDirector.OnRoomPlayersUpdated를 구독하여 플레이어 슬롯을 갱신한다. 로컬 플레이어가 호스트인 경우에만 startGameButton을 표시하며, CanStartGame 결과에 따라 interactable을 제어한다. startGameButton 클릭 시 LobbyDirector에 게임 시작을 요청한다. leaveButton 클릭 시 LobbyDirector에 LeaveRoom을 요청한다."
+    },
+    {
+      "id": 10,
+      "task": "RoomPlayerSlotView 구현",
+      "layer": "View",
+      "description": "RoomPlayerSlotView.cs — 룸 내부 플레이어 목록에서 한 명의 플레이어를 표시하는 프리팹용 MonoBehaviour. UI 요소: nicknameText(TMP_Text), hostIcon(GameObject, 호스트일 때만 활성), readyIcon(GameObject, 준비 완료 시 활성), readyStatusText(TMP_Text, '대기 중'/'준비 완료'). SetData(RoomPlayerData) 메서드로 데이터를 바인딩한다. 호스트 플레이어는 닉네임 옆에 왕관 아이콘(hostIcon)을 표시하고 readyStatusText를 '호스트'로 표시한다."
+    },
+    {
+      "id": 11,
+      "task": "로비 씬 UI 레이아웃 구성",
+      "layer": "None",
+      "description": "Unity 에디터에서 로비 씬(LobbyScene)의 Canvas 하위 UI 계층 구조를 구성한다. 최상위에 LobbyPanel과 RoomPanel 두 개의 패널을 배치하고 기본적으로 LobbyPanel만 활성화한다. LobbyPanel 하위에 검색바, 룸 목록 ScrollView, 방 만들기·새로고침 버튼을 배치한다. RoomPanel 하위에 방 제목, 플레이어 목록 ScrollView, 준비·나가기·게임 시작 버튼을 배치한다. CreateRoomPopup은 별도 오버레이로 구성하여 기본 비활성 상태로 둔다. RoomListItemView 프리팹과 RoomPlayerSlotView 프리팹을 Resources 또는 Addressable 경로에 생성한다. 각 View 스크립트를 대응하는 게임 오브젝트에 부착하고 Inspector에서 UI 참조를 연결한다."
+    }
+  ]
+}
+```

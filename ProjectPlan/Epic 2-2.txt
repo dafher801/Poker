@@ -1,0 +1,92 @@
+```json
+{
+  "id": 2,
+  "description": "한 판의 텍사스 홀덤을 프리플롭 → 플롭 → 턴 → 리버 → 쇼다운 순서로 진행하는 핵심 Director를 구현한다. 상태 머신 기반으로 각 페이즈를 전이하며, 매 턴마다 해당 플레이어의 IPlayerActionProvider에게 액션을 요청하고 결과를 검증한 뒤 IGameEventBroadcaster로 이벤트를 발행한다. 딜러 버튼 회전, 스몰·빅 블라인드 강제 베팅, 액션 순서(UTG→딜러), 베팅 라운드 종료 조건(모든 액티브 플레이어 동일 베팅 or 올인/폴드), 사이드 팟 생성 및 분배, 한 명 남았을 때 즉시 핸드 종료 등 모든 게임 흐름 규칙을 처리한다. Director는 MonoBehaviour를 상속하지 않으며, async/코루틴 기반으로 비동기 액션 대기를 지원한다. 에픽 완료 시 IPlayerActionProvider를 Mock으로 주입해 스크립트된 시나리오(프리플롭 올폴드, 쇼다운까지 진행, 사이드 팟 발생 등)가 올바르게 진행됨을 검증한다.",
+  "epic": [
+    {
+      "id": 1,
+      "task": "GameEventData.cs",
+      "layer": "Entity",
+      "description": "핸드 진행 중 발생하는 모든 이벤트의 페이로드 데이터 클래스를 정의한다. HandPhase enum(Preflop, Flop, Turn, River, Showdown), 그리고 이벤트 데이터 클래스들: PhaseChangedEvent(새 페이즈, 커뮤니티 카드 배열), BlindPostedEvent(플레이어 인덱스, 금액, 블라인드 종류), PlayerActedEvent(플레이어 인덱스, 액션 종류, 금액), PotUpdatedEvent(메인 팟 금액, 사이드 팟 목록), HandStartedEvent(딜러 인덱스, 참가 플레이어 목록), HandEndedEvent(승자 목록, 각 팟별 수상 내역), PlayerCardsDealtEvent(플레이어 인덱스, 카드 2장) 등을 readonly struct 또는 record로 정의한다. 모든 이벤트는 IGameEvent 마커 인터페이스를 구현한다."
+    },
+    {
+      "id": 2,
+      "task": "IPlayerActionProvider.cs",
+      "layer": "Gateway",
+      "description": "플레이어로부터 액션을 비동기로 요청하는 인터페이스를 정의한다. Task<PlayerAction> RequestActionAsync(int playerIndex, HandSnapshot snapshot, ValidActionSet validActions, CancellationToken ct) 시그니처를 갖는다. HandSnapshot은 해당 플레이어가 볼 수 있는 공개 정보(커뮤니티 카드, 각 플레이어의 베팅 금액, 팟 크기, 현재 페이즈 등)를 담는 readonly struct이다. ValidActionSet은 현재 허용되는 액션 종류와 최소/최대 레이즈 범위를 포함한다. 이 파일에 HandSnapshot, ValidActionSet도 함께 정의한다."
+    },
+    {
+      "id": 3,
+      "task": "IGameEventBroadcaster.cs",
+      "layer": "Gateway",
+      "description": "게임 이벤트를 모든 리스너에게 발행하는 인터페이스를 정의한다. void Broadcast(IGameEvent gameEvent) 메서드를 갖는다. 또한 이벤트 수신을 위한 IGameEventListener 인터페이스도 함께 정의한다: void OnGameEvent(IGameEvent gameEvent). IGameEventBroadcaster는 RegisterListener/UnregisterListener 메서드로 리스너를 관리한다. 이를 통해 View 레이어나 네트워크 레이어가 이벤트를 구독할 수 있다."
+    },
+    {
+      "id": 4,
+      "task": "DealerButtonUsecase.cs",
+      "layer": "Usecase",
+      "description": "딜러 버튼 위치를 결정하고 스몰블라인드(SB)·빅블라인드(BB) 좌석 인덱스를 계산하는 유스케이스이다. int GetNextDealerIndex(int currentDealerIndex, IReadOnlyList<PlayerState> players) - 현재 딜러 기준으로 다음 활성 플레이어를 딜러로 지정한다. (int sbIndex, int bbIndex) GetBlindPositions(int dealerIndex, IReadOnlyList<PlayerState> players) - 2인일 때 딜러=SB 규칙, 3인 이상일 때 딜러 좌측이 SB, 그 좌측이 BB인 규칙을 처리한다. 비활성(칩 0, 퇴장) 플레이어는 건너뛴다."
+    },
+    {
+      "id": 5,
+      "task": "BlindPostingUsecase.cs",
+      "layer": "Usecase",
+      "description": "스몰·빅 블라인드 강제 베팅을 적용하는 유스케이스이다. BlindResult PostBlinds(IReadOnlyList<PlayerState> players, int sbIndex, int bbIndex, int sbAmount, int bbAmount) - SB/BB 플레이어의 칩에서 블라인드를 차감하고, 차감 결과(실제 베팅 금액 — 칩이 부족하면 올인 처리)와 갱신된 플레이어 상태, 발생한 이벤트(BlindPostedEvent 목록)를 BlindResult로 반환한다. 칩이 블라인드보다 적으면 보유 칩 전체를 올인으로 처리한다."
+    },
+    {
+      "id": 6,
+      "task": "ActionOrderResolver.cs",
+      "layer": "Usecase",
+      "description": "각 페이즈에서 플레이어의 액션 순서를 결정하는 유스케이스이다. IReadOnlyList<int> ResolveOrder(HandPhase phase, int dealerIndex, IReadOnlyList<PlayerState> players) - 프리플롭에서는 BB 좌측(UTG)부터 시작하여 SB, BB 순으로 종료하고, 플롭 이후에서는 SB부터 시작하여 딜러에서 종료한다. 폴드·올인 상태인 플레이어는 목록에서 제외한다. 2인 헤즈업 시 프리플롭은 딜러(=SB)가 먼저, 플롭 이후는 BB가 먼저인 특수 규칙을 처리한다."
+    },
+    {
+      "id": 7,
+      "task": "PlayerActionValidator.cs",
+      "layer": "Usecase",
+      "description": "플레이어의 액션이 현재 베팅 상태에서 유효한지 검증하는 유스케이스이다. ValidActionSet GetValidActions(PlayerState player, int currentBet, int minRaise, int potSize) - 해당 플레이어가 수행 가능한 액션 종류(Fold, Check, Call, Raise, AllIn)와 레이즈 시 최소·최대 금액을 반환한다. bool Validate(PlayerAction action, ValidActionSet validSet) - 제출된 액션이 유효한지 검증한다. Check는 콜 금액이 0일 때만 허용, Call 금액은 자동 계산, Raise는 최소 레이즈(직전 레이즈 증분 이상) 규칙 준수, AllIn은 보유 칩 전체 베팅 등의 규칙을 적용한다."
+    },
+    {
+      "id": 8,
+      "task": "BettingRoundEvaluator.cs",
+      "layer": "Usecase",
+      "description": "베팅 라운드의 종료 조건을 판정하는 유스케이스이다. bool IsRoundComplete(IReadOnlyList<PlayerState> players, IReadOnlyList<int> actionOrder, int currentBet, IReadOnlySet<int> actedPlayerIndices) - 모든 액티브(폴드·올인 아닌) 플레이어가 최소 한 번 액션했고, 베팅 금액이 동일하면 true를 반환한다. bool IsHandOverByFold(IReadOnlyList<PlayerState> players) - 액티브 플레이어가 1명 이하이면 true를 반환한다. bool ShouldSkipToShowdown(IReadOnlyList<PlayerState> players) - 액티브(폴드 아닌) 플레이어가 모두 올인이거나 올인+1명인 경우 남은 페이즈를 스킵해야 함을 반환한다."
+    },
+    {
+      "id": 9,
+      "task": "SidePotCalculator.cs",
+      "layer": "Usecase",
+      "description": "사이드 팟을 생성하고 쇼다운 결과에 따라 팟을 분배하는 유스케이스이다. IReadOnlyList<Pot> BuildPots(IReadOnlyList<PlayerState> players) - 각 플레이어의 총 베팅 금액을 기준으로 올인 금액 경계마다 팟을 분리한다. 각 Pot은 금액과 참여 가능한(eligible) 플레이어 인덱스 목록을 가진다. IReadOnlyList<PotAward> DistributePots(IReadOnlyList<Pot> pots, IReadOnlyList<HandRank> playerHandRanks) - 각 팟에서 최고 핸드 랭크를 가진 eligible 플레이어에게 금액을 분배한다. 동순위 시 균등 분할하며 나머지 칩은 포지션 순(딜러에 가까운 쪽)으로 배분한다."
+    },
+    {
+      "id": 10,
+      "task": "HandPhaseStateMachine.cs",
+      "layer": "Director",
+      "description": "한 판의 페이즈 전이를 관리하는 상태 머신이다. MonoBehaviour를 상속하지 않는 순수 C# 클래스이다. 상태: Init → Preflop → Flop → Turn → River → Showdown → End. 각 상태에서 실행할 콜백(Func<Task>)을 등록할 수 있다. TransitionToNext() 호출 시 다음 상태로 전이하며, SkipToShowdown()으로 중간 페이즈를 건너뛸 수 있다. ForceEnd()로 즉시 End 상태로 전이할 수 있다(올폴드 시). 현재 상태를 CurrentPhase 프로퍼티로 노출하고, 상태 전이 시 OnPhaseChanged 이벤트를 발생시킨다."
+    },
+    {
+      "id": 11,
+      "task": "HandDirector.cs",
+      "layer": "Director",
+      "description": "한 판의 텍사스 홀덤 전체 흐름을 비동기로 오케스트레이션하는 핵심 디렉터이다. MonoBehaviour를 상속하지 않으며, 생성자에서 IPlayerActionProvider, IGameEventBroadcaster, 그리고 각 Usecase 인스턴스를 주입받는다. async Task RunHandAsync(HandConfig config, CancellationToken ct) 메서드가 진입점이다. 실행 흐름: (1) HandPhaseStateMachine 초기화, (2) DealerButtonUsecase로 딜러·블라인드 위치 결정, (3) BlindPostingUsecase로 블라인드 징수 후 이벤트 발행, (4) 카드 딜(덱에서 플레이어별 2장), (5) 프리플롭 베팅 라운드 루프 진입, (6) 각 페이즈마다: ActionOrderResolver로 순서 결정 → 순서대로 PlayerActionValidator로 유효 액션 계산 → IPlayerActionProvider.RequestActionAsync로 액션 수신 → 검증 → 상태 갱신 → PlayerActedEvent 발행 → BettingRoundEvaluator로 라운드 종료 검사, (7) 라운드 종료 시 다음 페이즈로 전이 또는 ShouldSkipToShowdown 확인, (8) IsHandOverByFold 시 즉시 종료하고 남은 플레이어에게 팟 지급, (9) 쇼다운 도달 시 SidePotCalculator로 팟 분배, (10) HandEndedEvent 발행. 각 단계에서 CancellationToken을 통해 취소를 지원한다."
+    },
+    {
+      "id": 12,
+      "task": "MockPlayerActionProvider.cs",
+      "layer": "Gateway",
+      "description": "테스트용 IPlayerActionProvider 구현체이다. 생성 시 Dictionary<(int playerIndex, int actionSequence), PlayerAction> 형태로 스크립트된 액션 시퀀스를 주입받는다. RequestActionAsync 호출 시 해당 플레이어의 다음 스크립트된 액션을 반환하며, 스크립트에 없는 요청이 오면 예외를 발생시킨다. 내부적으로 플레이어별 호출 카운터를 관리하여 동일 플레이어의 n번째 호출에 대해 올바른 액션을 반환한다. 대기 시간 시뮬레이션을 위한 선택적 Task.Delay도 지원한다."
+    },
+    {
+      "id": 13,
+      "task": "MockGameEventBroadcaster.cs",
+      "layer": "Gateway",
+      "description": "테스트용 IGameEventBroadcaster 구현체이다. Broadcast 호출 시 수신한 모든 IGameEvent를 내부 List<IGameEvent>에 순서대로 기록한다. 검증용 헬퍼 메서드: GetEvents<T>()로 특정 타입의 이벤트만 필터링, GetEventAt(int index)로 n번째 이벤트 조회, EventCount 프로퍼티로 총 이벤트 수 반환, Clear()로 기록 초기화. 테스트에서 이벤트 발행 순서와 내용을 단언(assert)할 때 사용한다."
+    },
+    {
+      "id": 14,
+      "task": "HandDirectorScenarioTests.cs",
+      "layer": "None",
+      "description": "HandDirector의 통합 시나리오 테스트이다. MockPlayerActionProvider와 MockGameEventBroadcaster를 주입하여 다음 시나리오를 검증한다: (1) 프리플롭 올폴드 — BB 제외 전원 폴드 시 BB가 팟 획득, HandEndedEvent 발행 확인. (2) 쇼다운까지 정상 진행 — 4페이즈 모두 통과하여 쇼다운 도달, 핸드 랭크에 따른 팟 분배 확인. (3) 사이드 팟 발생 — 3명 참가 중 1명 올인, 메인 팟과 사이드 팟이 올바르게 분리·분배되는지 확인. (4) 헤즈업(2인) 블라인드·액션 순서 특수 규칙 확인. (5) 모든 플레이어 올인 시 잔여 페이즈 스킵 후 쇼다운 직행 확인. 각 시나리오는 독립적 메서드로 작성하며, 이벤트 발행 순서와 최종 칩 상태를 단언한다."
+    }
+  ]
+}
+```

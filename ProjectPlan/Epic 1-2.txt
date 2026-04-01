@@ -1,0 +1,52 @@
+
+
+```json
+{
+  "id": 2,
+  "description": "주어진 카드 조합에서 텍사스 홀덤 족보를 판정하고, 두 핸드를 비교하여 승패를 가리는 Usecase를 구현한다.",
+  "epic": [
+    {
+      "id": 1,
+      "task": "HandRank enum 정의",
+      "layer": "Entity",
+      "description": "HandRank.cs — 텍사스 홀덤 족보 등급을 나타내는 enum을 정의한다. 값은 낮은 순서대로 HighCard=0, OnePair=1, TwoPair=2, ThreeOfAKind=3, Straight=4, Flush=5, FullHouse=6, FourOfAKind=7, StraightFlush=8, RoyalFlush=9 로 지정한다. 정수 비교만으로 족보 등급의 우열을 판단할 수 있도록 한다."
+    },
+    {
+      "id": 2,
+      "task": "HandEvaluation 값 객체 정의",
+      "layer": "Entity",
+      "description": "HandEvaluation.cs — 핸드 평가 결과를 담는 불변(immutable) 값 객체를 정의한다. 필드: HandRank Rank, List<int> TieBreakers(읽기 전용). TieBreakers는 동일 족보 간 키커·서브랭크 비교에 사용하며, 높은 값이 우선하는 내림차순 리스트이다. 생성자에서 Rank와 TieBreakers를 받아 초기화하고, TieBreakers는 방어적 복사하여 외부 변경을 차단한다."
+    },
+    {
+      "id": 3,
+      "task": "CombinationUtil 유틸리티 구현",
+      "layer": "Usecase",
+      "description": "CombinationUtil.cs — 카드 리스트에서 n장을 선택하는 모든 조합을 생성하는 정적 유틸리티 클래스를 구현한다. 메서드: static List<List<Card>> GetCombinations(List<Card> cards, int choose). 7장에서 5장을 선택할 때 C(7,5)=21가지 조합을 올바르게 반환해야 한다. 입력 카드 수가 choose보다 작으면 빈 리스트를 반환한다."
+    },
+    {
+      "id": 4,
+      "task": "HandEvaluator — 5장 핸드 분류 로직 구현",
+      "layer": "Usecase",
+      "description": "HandEvaluator.cs (1/3) — 정확히 5장의 카드 리스트를 받아 족보를 판정하는 private 핵심 메서드를 구현한다. private static HandEvaluation EvaluateFive(List<Card> five). 판정 순서(높은 족보부터 검사): RoyalFlush → StraightFlush → FourOfAKind → FullHouse → Flush → Straight → ThreeOfAKind → TwoPair → OnePair → HighCard. 각 족보에 대해 올바른 TieBreakers를 내림차순으로 구성한다. 세부 규칙: (1) Flush 판정 — 5장 모두 같은 Suit. (2) Straight 판정 — 5장 Rank를 정렬하여 연속인지 확인. Ace는 14(하이)와 1(로우) 양쪽으로 사용 가능. A-2-3-4-5 스트레이트(wheel)는 하이카드가 5이다. (3) RoyalFlush — Flush이면서 A-K-Q-J-10 스트레이트. StraightFlush의 특수 케이스로 처리. (4) FourOfAKind TieBreakers: [쿼드 랭크, 키커]. (5) FullHouse TieBreakers: [트리플 랭크, 페어 랭크]. (6) Flush TieBreakers: [5장 랭크 내림차순]. (7) Straight TieBreakers: [스트레이트 하이카드]. (8) ThreeOfAKind TieBreakers: [트리플 랭크, 나머지 내림차순]. (9) TwoPair TieBreakers: [높은 페어, 낮은 페어, 키커]. (10) OnePair TieBreakers: [페어 랭크, 나머지 내림차순]. (11) HighCard TieBreakers: [5장 랭크 내림차순]."
+    },
+    {
+      "id": 5,
+      "task": "HandEvaluator — Evaluate(5~7장 최선 핸드 선택) 구현",
+      "layer": "Usecase",
+      "description": "HandEvaluator.cs (2/3) — public static HandEvaluation Evaluate(List<Card> cards) 메서드를 구현한다. 5장이면 EvaluateFive를 직접 호출한다. 6~7장이면 CombinationUtil.GetCombinations(cards, 5)로 모든 5장 조합을 생성하고, 각 조합에 대해 EvaluateFive를 호출한 뒤 Compare를 사용하여 가장 높은 HandEvaluation을 반환한다. 입력이 5장 미만이거나 7장 초과이면 ArgumentException을 던진다."
+    },
+    {
+      "id": 6,
+      "task": "HandEvaluator — Compare 메서드 구현",
+      "layer": "Usecase",
+      "description": "HandEvaluator.cs (3/3) — public static int Compare(HandEvaluation a, HandEvaluation b) 메서드를 구현한다. 반환 값: 양수면 a 승, 음수면 b 승, 0이면 무승부(스플릿 팟). 비교 순서: (1) a.Rank와 b.Rank를 정수로 비교. 다르면 차이를 반환. (2) 같은 경우 TieBreakers를 인덱스 0부터 순차 비교. 값이 다른 첫 인덱스에서 차이를 반환. (3) 모든 TieBreakers가 동일하면 0을 반환."
+    },
+    {
+      "id": 7,
+      "task": "HandEvaluator 에디터 테스트 작성",
+      "layer": "None",
+      "description": "Tests/EditMode/HandEvaluatorTest.cs — Unity Test Framework(Edit Mode)를 사용하여 HandEvaluator의 정확성을 검증하는 테스트 클래스를 작성한다. 다음 테스트 케이스를 포함한다: (1) 10가지 족보 각각 정확한 판정 — HighCard, OnePair, TwoPair, ThreeOfAKind, Straight, Flush, FullHouse, FourOfAKind, StraightFlush, RoyalFlush 각각에 해당하는 5장을 제공하고 Evaluate 결과의 Rank를 Assert. (2) Ace-low 스트레이트 — A♠ 2♥ 3♦ 4♣ 5♠ → Straight, TieBreakers[0]==5 확인. (3) 7장에서 최선 5장 선택 — 풀하우스와 원페어가 동시에 가능한 7장을 제공하여 FullHouse가 선택되는지 검증. (4) 동일 족보 키커 비교 — OnePair K vs OnePair Q에서 K 승, TwoPair AA-KK vs AA-QQ에서 KK 측 승 확인. (5) 완전 동점 — 동일 5장(수트만 다름)으로 Compare가 0을 반환하는지 확인."
+    }
+  ]
+}
+```

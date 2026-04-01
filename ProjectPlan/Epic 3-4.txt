@@ -1,0 +1,62 @@
+```json
+{
+  "id": 4,
+  "description": "호스트 클라이언트에서만 Director와 Usecase가 구동되도록 게임 시작 흐름을 분기한다. 호스트는 마일스톤 1·2에서 구현한 기존 GameDirector를 그대로 사용하되, 원격 플레이어 슬롯에는 RemotePlayerActionGateway를 주입하고 이벤트 출력에는 NetworkEventBroadcaster를 추가로 연결한다. 비-호스트 클라이언트는 로컬 Director·Usecase를 생성하지 않고, NetworkEventBroadcaster가 제공하는 IGameEventBroadcaster를 구독하여 마일스톤 2의 View 코드(GameView, PlayerPanelView 등)를 그대로 재사용해 화면을 갱신한다. 각 클라이언트는 자신의 홀 카드만 볼 수 있도록 호스트가 개인 카드 정보를 해당 플레이어에게만 전송한다. 이 에픽이 완료되면 두 대 이상의 클라이언트에서 한 판의 텍사스 홀덤(프리플롭→플롭→턴→리버→쇼다운)을 네트워크를 통해 완주할 수 있어야 한다.",
+  "epic": [
+    {
+      "id": 1,
+      "task": "NetworkGameEvent 정의",
+      "layer": "Entity",
+      "description": "네트워크로 전송할 게임 이벤트 직렬화 데이터 구조체를 정의한다. NetworkGameEvent.cs 파일에 enum NetworkGameEventType(PhaseChanged, CommunityCardsDealt, HoleCardsDealt, PlayerActed, PotUpdated, PlayerTurnStarted, ShowdownResult, HandFinished)과 각 이벤트 타입에 대응하는 페이로드 구조체를 작성한다. PhaseChangedPayload(BettingPhase phase), CommunityCardsDealtPayload(int[] cardIds), HoleCardsDealtPayload(int targetActorNumber, int card1Id, int card2Id), PlayerActedPayload(int seatIndex, ActionType action, int amount), PotUpdatedPayload(int mainPot, int[] sidePots), PlayerTurnStartedPayload(int seatIndex, int callAmount, int minRaise, int maxRaise), ShowdownResultPayload(ShowdownEntry[] entries — 각 항목은 seatIndex, int[] cardIds, HandRankType rank, int potWon), HandFinishedPayload(int[] winnerSeatIndices). 모든 구조체는 Photon의 직렬화를 위해 byte[] 변환 정적 메서드(Serialize/Deserialize)를 포함한다."
+    },
+    {
+      "id": 2,
+      "task": "IGameEventBroadcaster 인터페이스",
+      "layer": "Gateway",
+      "description": "IGameEventBroadcaster.cs를 작성한다. 게임 이벤트를 발행·구독하기 위한 인터페이스로, 각 이벤트 타입에 대응하는 C# event를 선언한다: event Action<PhaseChangedPayload> OnPhaseChanged, event Action<CommunityCardsDealtPayload> OnCommunityCardsDealt, event Action<HoleCardsDealtPayload> OnHoleCardsDealt, event Action<PlayerActedPayload> OnPlayerActed, event Action<PotUpdatedPayload> OnPotUpdated, event Action<PlayerTurnStartedPayload> OnPlayerTurnStarted, event Action<ShowdownResultPayload> OnShowdownResult, event Action<HandFinishedPayload> OnHandFinished. 호스트 측 NetworkEventBroadcaster와 비-호스트 측 NetworkEventReceiver 모두 이 인터페이스를 구현하여, View 계층이 동일한 인터페이스로 이벤트를 구독할 수 있게 한다."
+    },
+    {
+      "id": 3,
+      "task": "HoleCardVisibilityUsecase 작성",
+      "layer": "Usecase",
+      "description": "HoleCardVisibilityUsecase.cs를 작성한다. 호스트가 홀 카드 정보를 전송할 때 수신 대상을 결정하는 로직을 담당한다. 메서드 List<(int targetActorNumber, HoleCardsDealtPayload payload)> BuildPerPlayerHoleCardEvents(Dictionary<int, int[]> seatToActorMap, Dictionary<int, Card[]> seatToHoleCards)를 제공한다. 각 좌석의 홀 카드 2장을 해당 좌석에 매핑된 Photon ActorNumber 플레이어에게만 전송할 페이로드로 변환한다. 쇼다운 단계에서는 메서드 List<(int targetActorNumber, HoleCardsDealtPayload payload)> BuildShowdownHoleCardEvents(...)를 통해 공개 대상 플레이어의 카드를 전체 브로드캐스트 대상(-1 등 특수 값)으로 설정한다."
+    },
+    {
+      "id": 4,
+      "task": "NetworkEventBroadcaster 작성 (호스트 측)",
+      "layer": "Gateway",
+      "description": "NetworkEventBroadcaster.cs를 작성한다. MonoBehaviourPunCallbacks를 상속하며 IGameEventBroadcaster를 구현한다. 호스트의 GameDirector가 발행하는 게임 진행 콜백(IGameDirectorObserver 또는 동등한 이벤트 인터페이스)을 구독하고, 각 이벤트를 NetworkGameEvent로 직렬화하여 PhotonNetwork.RaiseEvent(EventCode, data, RaiseEventOptions, SendOptions)로 전송한다. 홀 카드 이벤트는 HoleCardVisibilityUsecase를 호출하여 대상별 RaiseEventOptions.TargetActors를 설정해 해당 플레이어에게만 전송한다. 그 외 이벤트(페이즈 변경, 커뮤니티 카드, 팟 업데이트, 쇼다운 결과 등)는 ReceiverGroup.All로 브로드캐스트한다. 호스트 로컬에서도 자체 IGameEventBroadcaster 이벤트를 동시에 Invoke하여, 호스트의 View가 동일한 경로로 갱신될 수 있도록 한다."
+    },
+    {
+      "id": 5,
+      "task": "NetworkEventReceiver 작성 (비-호스트 측)",
+      "layer": "Gateway",
+      "description": "NetworkEventReceiver.cs를 작성한다. MonoBehaviourPunCallbacks를 상속하며 IGameEventBroadcaster를 구현한다. OnEnable에서 PhotonNetwork.NetworkingClient.EventReceived에 핸들러를 등록하고, OnDisable에서 해제한다. 수신한 Photon 이벤트의 EventCode를 확인하여 NetworkGameEvent로 역직렬화하고, 대응하는 IGameEventBroadcaster C# event를 Invoke한다. 이를 통해 비-호스트 클라이언트의 View 계층이 호스트에서 발행한 게임 이벤트를 실시간으로 수신할 수 있다."
+    },
+    {
+      "id": 6,
+      "task": "RemotePlayerActionGateway 작성 (호스트 측)",
+      "layer": "Gateway",
+      "description": "RemotePlayerActionGateway.cs를 작성한다. 기존 IPlayerActionGateway(또는 GameDirector가 플레이어 행동을 요청할 때 사용하는 인터페이스)를 구현한다. 호스트의 GameDirector가 원격 플레이어 차례에 행동을 요청하면, 이 게이트웨이는 비동기적으로 해당 ActorNumber 클라이언트로부터 Photon RPC 또는 Event를 대기한다. 내부에 TaskCompletionSource<PlayerAction> 또는 콜백 큐를 유지하며, Photon 이벤트 핸들러에서 수신한 원격 플레이어 액션(ActionType + betAmount)을 해당 TCS에 설정하여 GameDirector에 반환한다. 타임아웃(예: 30초) 발생 시 자동 폴드 PlayerAction을 반환한다."
+    },
+    {
+      "id": 7,
+      "task": "RemotePlayerActionSender 작성 (비-호스트 측)",
+      "layer": "Gateway",
+      "description": "RemotePlayerActionSender.cs를 작성한다. 비-호스트 클라이언트의 로컬 플레이어가 UI를 통해 Fold/Call/Raise를 선택하면, 해당 액션을 직렬화하여 Photon RPC 또는 RaiseEvent를 통해 호스트에게 전송한다. 메서드 SendAction(ActionType action, int betAmount)을 제공하며, 내부적으로 특정 EventCode와 함께 PhotonNetwork.RaiseEvent를 호출하고 TargetActors를 MasterClient로 설정한다. 전송 후에는 UI 입력을 비활성화하여 중복 전송을 방지한다."
+    },
+    {
+      "id": 8,
+      "task": "ClientGameDirector 작성 (비-호스트 측)",
+      "layer": "Director",
+      "description": "ClientGameDirector.cs를 작성한다. 비-호스트 클라이언트 전용 경량 Director로, 게임 로직(Usecase)을 포함하지 않는다. 생성자 또는 Initialize 메서드에서 IGameEventBroadcaster(NetworkEventReceiver)와 View 레퍼런스(GameView, PlayerPanelView 등 M2 View 컴포넌트)를 주입받는다. IGameEventBroadcaster의 각 이벤트를 구독하여 대응하는 View 갱신 메서드를 호출한다: OnPhaseChanged → GameView.UpdatePhase, OnCommunityCardsDealt → GameView.ShowCommunityCards, OnHoleCardsDealt → PlayerPanelView.ShowHoleCards(자기 카드만), OnPlayerActed → PlayerPanelView.ShowAction, OnPotUpdated → GameView.UpdatePot, OnPlayerTurnStarted → 해당 seatIndex가 로컬 플레이어면 BettingView 입력 UI 활성화 + RemotePlayerActionSender 연결, OnShowdownResult → GameView.ShowShowdown, OnHandFinished → GameView.ShowResult. MonoBehaviour를 상속하지 않으며, 비-호스트의 게임 화면 전체 흐름을 네트워크 이벤트 기반으로 제어한다."
+    },
+    {
+      "id": 9,
+      "task": "NetworkGameSessionBootstrapper 작성",
+      "layer": "Director",
+      "description": "NetworkGameSessionBootstrapper.cs를 작성한다. MonoBehaviourPunCallbacks를 상속하며, Photon 룸 입장 완료(OnJoinedRoom) 시점에 호스트/비-호스트 분기를 수행하는 진입점이다. PhotonNetwork.IsMasterClient가 true인 경우(호스트): (1) 기존 GameDirector를 생성한다. (2) 룸 내 각 플레이어 ActorNumber와 좌석 매핑을 수행한다. (3) 로컬 플레이어 슬롯에는 기존 LocalPlayerActionGateway(또는 AIPlayerActionGateway)를, 원격 플레이어 슬롯에는 RemotePlayerActionGateway를 생성하여 GameDirector에 주입한다. (4) HoleCardVisibilityUsecase를 생성하고 NetworkEventBroadcaster를 생성하여 GameDirector의 이벤트 출력에 연결한다. (5) GameDirector.StartGame()을 호출한다. PhotonNetwork.IsMasterClient가 false인 경우(비-호스트): (1) NetworkEventReceiver를 생성·등록한다. (2) RemotePlayerActionSender를 생성한다. (3) 씬에 존재하는 M2 View 컴포넌트(GameView, PlayerPanelView 등)의 레퍼런스를 수집한다. (4) ClientGameDirector를 생성하고 NetworkEventReceiver, RemotePlayerActionSender, View 레퍼런스를 주입하여 초기화한다. 양쪽 모두 좌석-ActorNumber 매핑 정보는 Photon CustomProperties를 통해 공유한다."
+    }
+  ]
+}
+```

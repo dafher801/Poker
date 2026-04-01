@@ -1,0 +1,56 @@
+```json
+{
+  "id": 3,
+  "description": "마일스톤 1에서 정의한 IPlayerActionProvider를 구현하는 RemotePlayerActionGateway와, IGameEventBroadcaster를 구현하는 NetworkEventBroadcaster를 작성한다. RemotePlayerActionGateway는 비-호스트 클라이언트에서 플레이어의 Fold/Check/Call/Raise 액션을 Photon RPC 또는 이벤트로 호스트에게 전송하고, 호스트 측에서는 이를 수신하여 기존 IPlayerActionProvider 인터페이스 형태로 Usecase에 제공한다. NetworkEventBroadcaster는 호스트에서 발생하는 게임 상태 변화(딜·베팅 결과·팟 갱신·커뮤니티 카드 공개·라운드 결과 등)를 Photon 이벤트로 모든 클라이언트에 브로드캐스트하며, 클라이언트 측에서는 수신한 이벤트를 IGameEventBroadcaster 인터페이스의 콜백으로 변환하여 View가 구독할 수 있도록 한다. 이 에픽이 완료되면 호스트에서 발생시킨 더미 게임 이벤트가 원격 클라이언트에서 정상 수신되고, 원격 클라이언트에서 보낸 더미 액션이 호스트에서 정상 수신되는 것을 확인할 수 있어야 한다.",
+  "epic": [
+    {
+      "id": 1,
+      "task": "NetworkActionData.cs 작성",
+      "layer": "Entity",
+      "description": "네트워크로 전송할 플레이어 액션 정보를 담는 직렬화 가능 데이터 클래스. seatIndex(int)로 어느 좌석의 플레이어인지 식별하고, actionType(enum 값을 int로 변환: Fold=0, Check=1, Call=2, Raise=3)과 raiseAmount(int)를 필드로 포함한다. System.Serializable 어트리뷰트를 적용하여 JsonUtility 직렬화가 가능하도록 한다. 기본 생성자와 각 필드를 받는 팩토리 메서드 Create(int seatIndex, int actionType, int raiseAmount)를 제공한다."
+    },
+    {
+      "id": 2,
+      "task": "NetworkEventData.cs 작성",
+      "layer": "Entity",
+      "description": "네트워크로 전송할 게임 이벤트 정보를 담는 직렬화 가능 데이터 클래스. eventType(int)으로 이벤트 종류를 구분하며, 이벤트 종류 상수를 내부 static class EventTypes에 정의한다: DealHoleCards=1, CommunityCardReveal=2, BettingTurnChanged=3, PotUpdated=4, PlayerActed=5, RoundResult=6, PhaseChanged=7. payload(string) 필드에 이벤트별 세부 데이터를 JSON 문자열로 담는다. System.Serializable 어트리뷰트를 적용하고, Create(int eventType, string payload) 팩토리 메서드를 제공한다."
+    },
+    {
+      "id": 3,
+      "task": "PhotonEventCodes.cs 작성",
+      "layer": "Gateway",
+      "description": "Photon RaiseEvent에 사용할 커스텀 이벤트 코드 상수를 정의하는 정적 클래스. Photon 내부 예약 범위(200 이상)와 충돌하지 않도록 byte 값으로 정의한다: PlayerAction=1, GameEvent=2. 이 코드들을 PhotonEventRouter, RemotePlayerActionGateway, NetworkEventBroadcaster에서 공통으로 참조한다."
+    },
+    {
+      "id": 4,
+      "task": "PhotonMessageSerializer.cs 작성",
+      "layer": "Gateway",
+      "description": "NetworkActionData와 NetworkEventData를 byte[]로 직렬화하고, byte[]를 다시 해당 DTO로 역직렬화하는 정적 유틸리티 클래스. 내부적으로 JsonUtility.ToJson → System.Text.Encoding.UTF8.GetBytes 경로로 직렬화하고, UTF8.GetString → JsonUtility.FromJson<T> 경로로 역직렬화한다. 제네릭 메서드 static byte[] Serialize<T>(T data)와 static T Deserialize<T>(byte[] bytes)를 제공한다."
+    },
+    {
+      "id": 5,
+      "task": "PhotonEventRouter.cs 작성",
+      "layer": "Gateway",
+      "description": "MonoBehaviourPunCallbacks를 상속하고 Photon.Realtime.IOnEventCallback을 구현하는 컴포넌트. 씬에 하나만 존재하도록 싱글톤 패턴을 적용한다. OnEnable에서 PhotonNetwork.AddCallbackTarget(this), OnDisable에서 RemoveCallbackTarget(this)를 호출한다. Dictionary<byte, Action<byte[]>> 타입의 핸들러 맵을 보유하며, RegisterHandler(byte eventCode, Action<byte[]> handler)와 UnregisterHandler(byte eventCode) 메서드를 제공한다. IOnEventCallback.OnEvent(EventData photonEvent)에서 photonEvent.Code를 키로 핸들러 맵을 조회하여, 등록된 핸들러가 있으면 photonEvent.CustomData를 byte[]로 캐스팅하여 핸들러에 전달한다."
+    },
+    {
+      "id": 6,
+      "task": "RemotePlayerActionGateway.cs 작성",
+      "layer": "Gateway",
+      "description": "IPlayerActionProvider를 구현하는 클래스. 두 가지 역할을 수행한다.\n\n[클라이언트(비-호스트) 측 — 액션 전송]\nSubmitAction(int seatIndex, int actionType, int raiseAmount) 메서드를 제공한다. 이 메서드는 NetworkActionData를 생성하고 PhotonMessageSerializer로 직렬화한 뒤, PhotonNetwork.RaiseEvent(PhotonEventCodes.PlayerAction, byte[], RaiseEventOptions{Receivers=MasterClient}, SendOptions.SendReliable)로 호스트에 전송한다.\n\n[호스트 측 — 액션 수신 및 제공]\n초기화 시 PhotonEventRouter에 PlayerAction 코드로 핸들러를 등록한다. 수신된 byte[]를 NetworkActionData로 역직렬화하여 ConcurrentQueue<NetworkActionData>에 적재한다. IPlayerActionProvider 인터페이스의 비동기 혹은 콜백 방식(기존 정의에 맞춤)으로 큐에서 액션을 꺼내 Usecase에 제공한다. Dispose 또는 OnDestroy 시 핸들러를 해제한다."
+    },
+    {
+      "id": 7,
+      "task": "NetworkEventBroadcaster.cs 작성",
+      "layer": "Gateway",
+      "description": "IGameEventBroadcaster를 구현하는 클래스. 두 가지 역할을 수행한다.\n\n[호스트 측 — 이벤트 브로드캐스트]\nBroadcastEvent(int eventType, string payload) 메서드를 제공한다. NetworkEventData를 생성하고 PhotonMessageSerializer로 직렬화한 뒤, PhotonNetwork.RaiseEvent(PhotonEventCodes.GameEvent, byte[], RaiseEventOptions{Receivers=Others}, SendOptions.SendReliable)로 모든 원격 클라이언트에 전송한다. 호스트 자신에게도 동일 이벤트를 로컬로 발화하여 호스트 View도 구독 가능하게 한다.\n\n[클라이언트 측 — 이벤트 수신 및 콜백 발화]\n초기화 시 PhotonEventRouter에 GameEvent 코드로 핸들러를 등록한다. 수신된 byte[]를 NetworkEventData로 역직렬화한 뒤, event Action<NetworkEventData> OnGameEventReceived 이벤트를 발화한다. View 레이어에서 이 이벤트에 구독하여 UI를 갱신할 수 있다. 이벤트 타입별 세분화된 콜백(OnDealCards, OnCommunityReveal, OnPotUpdated, OnRoundResult 등)도 eventType에 따라 선택적으로 발화한다. Dispose 또는 OnDestroy 시 핸들러를 해제한다."
+    },
+    {
+      "id": 8,
+      "task": "NetworkGatewayTestView.cs 작성",
+      "layer": "View",
+      "description": "양방향 네트워크 통신 검증용 MonoBehaviour. 마일스톤 3 에픽 2의 로비/룸 연결이 완료된 상태의 씬에 배치한다.\n\n[호스트 전용 UI]\n'Send Dummy Event' 버튼을 배치한다. 클릭 시 NetworkEventBroadcaster.BroadcastEvent를 호출하여 더미 CommunityCardReveal 이벤트(payload에 카드 3장 정보 JSON)를 브로드캐스트한다. 'Received Actions' 텍스트 영역에 RemotePlayerActionGateway 큐에서 꺼낸 액션 로그를 표시한다.\n\n[클라이언트 전용 UI]\n'Send Dummy Action' 버튼을 배치한다. 클릭 시 RemotePlayerActionGateway.SubmitAction을 호출하여 더미 Raise 100 액션을 호스트에 전송한다. 'Received Events' 텍스트 영역에 NetworkEventBroadcaster.OnGameEventReceived를 구독하여 수신된 이벤트 로그를 표시한다.\n\nPhotonNetwork.IsMasterClient 값으로 호스트/클라이언트 UI를 자동 전환한다. 호스트에서 더미 이벤트 전송 → 클라이언트 수신 확인, 클라이언트에서 더미 액션 전송 → 호스트 수신 확인이 모두 UI 로그로 검증 가능해야 한다."
+    }
+  ]
+}
+```

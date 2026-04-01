@@ -1,0 +1,74 @@
+```json
+{
+  "id": 7,
+  "description": "Usecase 계층. 한 핸드(게임 라운드)의 전체 생명주기를 오케스트레이션하는 GameRoundUsecase를 구현한다. 흐름: (1) 딜러 버튼 위치 결정 → SB/BB 강제 베팅 징수, (2) IDeckProvider로부터 덱을 받아 각 플레이어에 홀 카드 2장 딜, (3) 프리플롭 베팅 라운드 실행, (4) 커뮤니티 카드 3장(플롭) 공개 → 플롭 베팅, (5) 1장(턴) 공개 → 턴 베팅, (6) 1장(리버) 공개 → 리버 베팅, (7) 쇼다운: 남은 플레이어들의 핸드를 HandEvaluator로 평가, 각 팟별 최고 핸드 소유자(들)을 결정, 동점 시 팟 균등 분배, (8) 칩 지급 및 결과 발행. 베팅 도중 1명만 남으면 쇼다운 없이 즉시 해당 플레이어에게 팟 지급. 2인·10인 테이블 블라인드 포지션 규칙(헤즈업 시 딜러=SB 특수 규칙 포함)을 올바르게 처리한다.",
+  "epic": [
+    {
+      "id": 1,
+      "task": "RoundPhase 열거형 정의",
+      "layer": "Entity",
+      "description": "RoundPhase.cs — 한 핸드의 진행 단계를 나타내는 enum을 정의한다. 값: None, PreFlop, Flop, Turn, River, Showdown, Complete. 각 값은 GameRoundUsecase가 현재 라운드의 단계를 추적하는 데 사용된다."
+    },
+    {
+      "id": 2,
+      "task": "GameRoundState 데이터 클래스 정의",
+      "layer": "Entity",
+      "description": "GameRoundState.cs — 한 핸드 진행 중 필요한 모든 상태를 보관하는 불변/값 객체를 정의한다. 필드: int dealerSeatIndex, int sbSeatIndex, int bbSeatIndex, RoundPhase currentPhase, List<Card> communityCards (최대 5장), List<int> activeSeatIndices (폴드하지 않은 좌석), int currentBet, int potTotal. 생성 시 기본값 검증(communityCards 5장 이하 등)을 수행한다."
+    },
+    {
+      "id": 3,
+      "task": "RoundResult 데이터 클래스 정의",
+      "layer": "Entity",
+      "description": "RoundResult.cs — 한 핸드 종료 후 결과를 담는 데이터 클래스를 정의한다. 필드: List<PotResult> potResults. 내부 클래스 PotResult는 int potAmount, List<int> winnerSeatIndices, int awardPerWinner, int remainder 를 갖는다. remainder는 동점 시 균등 분배 후 남은 나머지 칩(딜러 버튼 좌측 우선 지급 규칙 적용용)이다. bool isEarlyWin 플래그로 쇼다운 없이 종료되었는지 표시한다."
+    },
+    {
+      "id": 4,
+      "task": "BlindPositionCalculator 구현",
+      "layer": "Usecase",
+      "description": "BlindPositionCalculator.cs — 정적 메서드 Calculate(int dealerSeatIndex, List<int> activeSeats)를 제공한다. 반환 타입은 (int dealer, int sb, int bb) 튜플이다. activeSeats가 2명(헤즈업)일 때 딜러=SB 특수 규칙을 적용하여 딜러 좌석을 SB로, 상대를 BB로 설정한다. 3명 이상일 때는 딜러의 시계 방향 다음을 SB, 그 다음을 BB로 결정한다. activeSeats 리스트는 좌석 번호 0~9 중 참가 중인 좌석만 포함하며, 원형 순회 로직으로 다음 좌석을 찾는다. activeSeats가 2 미만이면 ArgumentException을 던진다."
+    },
+    {
+      "id": 5,
+      "task": "BlindPostingUsecase 구현",
+      "layer": "Usecase",
+      "description": "BlindPostingUsecase.cs — PostBlinds(GameRoundState state, IChipLedger ledger, int sbAmount, int bbAmount) 메서드를 구현한다. IChipLedger(기존 에픽에서 정의된 칩 관리 인터페이스)를 통해 SB 좌석에서 sbAmount, BB 좌석에서 bbAmount를 차감하여 팟에 추가한다. 플레이어의 잔여 칩이 블라인드 금액보다 적으면 올인 처리하여 보유 칩 전액을 징수한다. 변경된 state(potTotal, currentBet 갱신)를 반환한다."
+    },
+    {
+      "id": 6,
+      "task": "HoleCardDealingUsecase 구현",
+      "layer": "Usecase",
+      "description": "HoleCardDealingUsecase.cs — DealHoleCards(IDeckProvider deck, List<int> activeSeatIndices, int dealerSeatIndex) 메서드를 구현한다. 딜러 좌측(SB) 좌석부터 시계 방향으로 한 장씩 2바퀴를 돌며 총 2장을 각 플레이어에 배분한다. 반환 타입은 Dictionary<int, (Card, Card)>로 좌석 번호별 홀 카드 쌍이다. IDeckProvider.Draw()를 호출하여 카드를 뽑으며, 덱이 부족하면 InvalidOperationException을 던진다."
+    },
+    {
+      "id": 7,
+      "task": "BettingRoundUsecase 구현",
+      "layer": "Usecase",
+      "description": "BettingRoundUsecase.cs — 단일 베팅 라운드를 실행하는 RunBettingRound(GameRoundState state, IBettingActionProvider actionProvider, IChipLedger ledger) 메서드를 구현한다. 프리플롭이면 BB 좌측(UTG)부터, 그 외에는 SB부터 시계 방향으로 순회한다. 각 플레이어에게 IBettingActionProvider를 통해 행동(Fold/Check/Call/Raise/AllIn)을 요청받고, 결과를 state에 반영한다. 모든 활성 플레이어가 현재 베팅 금액에 매칭했거나 올인 상태이면 라운드를 종료한다. 라운드 중 활성 플레이어가 1명 이하로 줄면 즉시 종료하고 earlyWin 플래그를 true로 설정한다. 반환 타입은 (GameRoundState updatedState, bool earlyWin)이다."
+    },
+    {
+      "id": 8,
+      "task": "CommunityCardDealUsecase 구현",
+      "layer": "Usecase",
+      "description": "CommunityCardDealUsecase.cs — DealCommunityCards(IDeckProvider deck, GameRoundState state, RoundPhase targetPhase) 메서드를 구현한다. targetPhase가 Flop이면 1장 번(burn) 후 3장을 state.communityCards에 추가한다. Turn 또는 River이면 1장 번 후 1장을 추가한다. 그 외 phase가 전달되면 ArgumentException을 던진다. 번 카드는 별도 저장하지 않으며 IDeckProvider.Draw()로 소비만 한다. 갱신된 state를 반환한다."
+    },
+    {
+      "id": 9,
+      "task": "ShowdownUsecase 구현",
+      "layer": "Usecase",
+      "description": "ShowdownUsecase.cs — EvaluateShowdown(GameRoundState state, Dictionary<int, (Card, Card)> holeCards, IHandEvaluator evaluator, List<Pot> pots) 메서드를 구현한다. 각 Pot에 대해 해당 팟에 자격이 있는(eligible) 활성 플레이어들의 베스트 5카드 핸드를 evaluator.Evaluate(holeCards, communityCards)로 평가한다. 최고 핸드 랭크를 가진 플레이어(들)를 결정하고, 동점 시 모든 동점자를 승자 목록에 포함한다. 각 팟 금액을 승자 수로 나눠 awardPerWinner를 계산하고, 나누어떨어지지 않는 나머지는 딜러 좌측 첫 번째 승자에게 지급하는 규칙을 적용한다. 결과를 List<PotResult>로 반환한다."
+    },
+    {
+      "id": 10,
+      "task": "ChipDistributionUsecase 구현",
+      "layer": "Usecase",
+      "description": "ChipDistributionUsecase.cs — DistributeChips(List<PotResult> potResults, IChipLedger ledger) 메서드를 구현한다. 각 PotResult를 순회하며 winnerSeatIndices의 각 승자에게 awardPerWinner만큼 칩을 ledger.AddChips(seatIndex, amount)로 지급한다. remainder가 0보다 크면 지정된 우선 좌석(딜러 좌측 첫 번째 승자)에게 추가 지급한다. 모든 팟이 빠짐없이 분배되었는지 검증하고, 총 분배 금액이 총 팟 금액과 일치하지 않으면 InvalidOperationException을 던진다."
+    },
+    {
+      "id": 11,
+      "task": "GameRoundUsecase 메인 오케스트레이터 구현",
+      "layer": "Usecase",
+      "description": "GameRoundUsecase.cs — 한 핸드의 전체 생명주기를 순차적으로 실행하는 메인 클래스를 구현한다. 생성자에서 IDeckProvider, IChipLedger, IBettingActionProvider, IHandEvaluator, IPotManager를 주입받는다. 핵심 메서드 PlayRound(List<int> seatIndices, int dealerSeatIndex, int sbAmount, int bbAmount)는 다음 순서로 호출한다: (1) BlindPositionCalculator.Calculate로 SB/BB 좌석 결정 및 GameRoundState 초기화, (2) BlindPostingUsecase.PostBlinds로 블라인드 징수, (3) HoleCardDealingUsecase.DealHoleCards로 홀 카드 딜, (4) BettingRoundUsecase.RunBettingRound(프리플롭) — earlyWin이면 즉시 남은 플레이어에게 팟 지급 후 RoundResult 반환, (5) CommunityCardDealUsecase.DealCommunityCards(Flop) → BettingRound(플롭) — earlyWin 체크, (6) CommunityCardDealUsecase(Turn) → BettingRound(턴) — earlyWin 체크, (7) CommunityCardDealUsecase(River) → BettingRound(리버) — earlyWin 체크, (8) ShowdownUsecase.EvaluateShowdown으로 승자 결정, (9) ChipDistributionUsecase.DistributeChips로 칩 지급, (10) RoundResult를 구성하여 반환. earlyWin 발생 시 ChipDistributionUsecase를 통해 유일한 남은 플레이어에게 전체 팟을 지급하고 isEarlyWin=true인 RoundResult를 반환한다."
+    }
+  ]
+}
+```

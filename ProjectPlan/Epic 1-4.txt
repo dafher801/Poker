@@ -1,0 +1,74 @@
+```json
+{
+  "id": 4,
+  "description": "한 핸드(게임 라운드)의 전체 흐름을 오케스트레이션하고, 승자를 판정하며, 프리플롭부터 쇼다운까지 전 과정을 통합 검증한다.",
+  "epic": [
+    {
+      "id": 1,
+      "task": "IGameEventBroadcaster 인터페이스 작성",
+      "layer": "Gateway",
+      "description": "Assets/Scripts/Gateway/IGameEventBroadcaster.cs — 게임 라운드 진행 중 발생하는 이벤트를 외부(View, 네트워크 등)에 전파하기 위한 인터페이스를 정의한다.\n\n• void OnRoundStarted(int roundNumber, int dealerIndex)\n• void OnBlindsPosted(string sbPlayerId, int sbAmount, string bbPlayerId, int bbAmount)\n• void OnHoleCardsDealt(string playerId, Card card1, Card card2) — 해당 플레이어에게만 전달되는 의도\n• void OnCommunityCardsDealt(GamePhase phase, IReadOnlyList<Card> newCards)\n• void OnPlayerActed(string playerId, PlayerActionType action, int amount)\n• void OnPotUpdated(IReadOnlyList<Pot> pots)\n• void OnShowdown(IReadOnlyList<(string PlayerId, HandRank rank, IReadOnlyList<Card> bestFive)> results)\n• void OnRoundEnded(IReadOnlyList<(string PlayerId, int chipDelta)> settlements)\n\n모든 메서드는 기본적으로 void 반환. 비동기 전파가 필요한 구현체는 내부에서 fire-and-forget 하거나 큐잉한다. 이 인터페이스 자체는 어떠한 구현도 포함하지 않는다."
+    },
+    {
+      "id": 2,
+      "task": "IGameStateRepository 인터페이스 작성",
+      "layer": "Gateway",
+      "description": "Assets/Scripts/Gateway/IGameStateRepository.cs — GameState를 영속화·복원하기 위한 인터페이스를 정의한다.\n\n• void Save(GameState state) — 현재 GameState 스냅샷을 저장한다.\n• GameState Load() — 가장 최근 저장된 GameState를 반환한다. 저장된 것이 없으면 null 반환.\n\n이 인터페이스는 저장 매체(메모리, 파일, 네트워크)를 추상화하며, Usecase 계층에서는 이 인터페이스만 참조한다. 마일스톤 1 에서는 실제 파일 저장 구현이 아닌, 메모리 기반 InMemoryGameStateRepository 스텁을 함께 같은 파일 또는 별도 파일로 작성한다.\n\nInMemoryGameStateRepository:\n• 내부에 GameState 필드 하나를 보유하고 Save 시 Deep Copy(혹은 직접 참조 저장) 후 Load 시 반환한다."
+    },
+    {
+      "id": 3,
+      "task": "DealerRotation 유틸리티 작성",
+      "layer": "Usecase",
+      "description": "Assets/Scripts/Usecase/DealerRotation.cs — 딜러 버튼 이동 및 블라인드 포지션 결정 로직을 담당하는 정적 유틸리티 클래스.\n\n• static int GetNextDealer(GameState state):\n  - 현재 state.DealerIndex를 기준으로 인덱스를 +1씩 순환하며, PlayerStatus가 Eliminated가 아닌 첫 플레이어의 인덱스를 반환한다.\n  - 모든 플레이어가 Eliminated이면 예외(InvalidOperationException)를 던진다.\n\n• static (int SB, int BB) GetBlindPositions(int dealerIndex, List<PlayerData> players):\n  - Eliminated가 아닌 활성 플레이어 목록을 추출한다.\n  - 활성 플레이어가 2명(헤즈업)인 경우: SB = dealerIndex, BB = 딜러 다음 활성 플레이어 인덱스. (딜러=SB 특수 규칙)\n  - 활성 플레이어가 3명 이상인 경우: SB = 딜러 다음 활성 플레이어, BB = SB 다음 활성 플레이어.\n  - 순환 인덱스 계산 시 Eliminated 플레이어를 건너뛴다.\n\n단위 테스트 관점 검증 항목:\n  - 10인 테이블에서 중간에 Eliminated 플레이어가 있을 때 올바르게 건너뛰는지\n  - 2인 헤즈업 시 딜러=SB인지\n  - 3인 이상일 때 딜러 ≠ SB인지"
+    },
+    {
+      "id": 4,
+      "task": "WinnerResolver 작성",
+      "layer": "Usecase",
+      "description": "Assets/Scripts/Usecase/WinnerResolver.cs — 쇼다운 또는 조기 종료 시 최종 승자와 배분 금액을 결정하는 클래스.\n\n• List<(string PlayerId, int Amount)> Resolve(GameState state):\n  1. 조기 종료 판정: Active 상태(폴드·탈락이 아닌) 플레이어가 1명뿐이면 해당 플레이어에게 전체 팟(메인 팟 + 모든 사이드 팟)을 수여하고 반환한다.\n  2. 쇼다운 판정:\n     a. state.CommunityCards(5장)와 각 Active/AllIn 플레이어의 HoleCards(2장)를 조합하여 HandEvaluator.Evaluate(7장)를 호출, 각 플레이어의 HandRank를 얻는다.\n     b. PotManager.DistributePots(pots, playerRanks)를 호출하여 각 팟별 승자를 결정한다.\n        - 각 팟의 eligible 플레이어 중 최고 HandRank를 가진 플레이어(들)에게 균등 분배한다.\n        - 동률(스플릿 팟) 시 팟을 인원수로 나누고, 나머지 칩은 딜러에 가장 가까운(시계 방향) 플레이어에게 1칩씩 추가 지급한다.\n     c. 모든 팟의 분배 결과를 합산하여 (PlayerId, Amount) 리스트로 반환한다.\n\n의존성: HandEvaluator(에픽 2), PotManager(에픽 3)의 public API를 사용한다. 자체적으로 GameState를 변경하지 않고 읽기 전용으로 접근한다."
+    },
+    {
+      "id": 5,
+      "task": "GameRoundUsecase 작성",
+      "layer": "Usecase",
+      "description": "Assets/Scripts/Usecase/GameRoundUsecase.cs — 한 핸드의 전체 흐름을 순차 실행하는 메인 오케스트레이터.\n\n• async Task PlayRound(GameState state, IRandomSource random, IPlayerActionProvider actionProvider, IGameEventBroadcaster broadcaster, IGameStateRepository repository):\n\n  [Phase 1 — 초기화]\n  1. DealerRotation.GetNextDealer로 새 딜러 인덱스를 결정하여 state.DealerIndex 갱신.\n  2. DealerRotation.GetBlindPositions로 SB/BB 위치 결정.\n  3. 블라인드 강제 베팅 적용: SB/BB 플레이어의 Chips에서 차감하고 CurrentBet 설정. 칩이 블라인드보다 적으면 보유 칩 전액을 베팅하고 AllIn 상태로 전환.\n  4. broadcaster.OnBlindsPosted 호출.\n\n  [Phase 2 — 딜링]\n  5. DeckManager(또는 Deck 엔티티)를 IRandomSource로 셔플.\n  6. 각 Active 플레이어에게 홀카드 2장씩 딜링하여 PlayerData.HoleCards에 저장.\n  7. broadcaster.OnHoleCardsDealt 호출.\n\n  [Phase 3 — 베팅 라운드 반복]\n  다음 4개의 스트리트를 순차 실행:\n  a. PreFlop: 베팅 시작 플레이어 = BB 다음, 최소 레이즈 = BB\n  b. Flop: 커뮤니티 3장 딜 → broadcaster.OnCommunityCardsDealt → 베팅(시작 = SB 또는 SB 다음 Active)\n  c. Turn: 커뮤니티 1장 딜 → broadcaster → 베팅\n  d. River: 커뮤니티 1장 딜 → broadcaster → 베팅\n\n  각 스트리트 후:\n  - Active(폴드·탈락 아닌) 플레이어가 1명 이하면 조기 종료로 분기.\n  - BettingRoundUsecase(에픽 3)를 호출하여 베팅 라운드 실행.\n\n  [Phase 4 — 쇼다운 / 조기 종료]\n  8. WinnerResolver.Resolve(state)로 배분 내역 획득.\n  9. 각 플레이어 Chips에 수상 금액 가산.\n  10. broadcaster.OnShowdown (쇼다운인 경우) / broadcaster.OnRoundEnded 호출.\n\n  [Phase 5 — 정리]\n  11. 각 플레이어: HoleCards 초기화, CurrentBet = 0, 상태를 Waiting으로 리셋(Chips가 0이면 Eliminated).\n  12. CommunityCards 초기화, Pots 초기화.\n  13. repository.Save(state).\n\n에러 처리: 각 단계에서 예외 발생 시 state를 마지막 안전 상태로 롤백하기보다는 예외를 상위로 전파한다(마일스톤 1 범위)."
+    },
+    {
+      "id": 6,
+      "task": "StubPlayerActionProvider 작성",
+      "layer": "Gateway",
+      "description": "Assets/Scripts/Gateway/Stubs/StubPlayerActionProvider.cs — 통합 테스트용으로 사전 정의된 액션 시퀀스를 순서대로 반환하는 IPlayerActionProvider 구현체.\n\n• 생성자: Dictionary<string, Queue<PlayerAction>>을 받는다. 키는 PlayerId, 값은 해당 플레이어가 차례가 올 때마다 Dequeue할 액션 큐.\n• GetAction 호출 시 해당 PlayerId의 큐에서 Dequeue하여 반환한다.\n• 큐가 비었는데 호출되면 기본 액션(Fold)을 반환하거나 InvalidOperationException을 던진다(테스트 시나리오 설계 오류 감지 목적).\n\nPlayerAction은 (PlayerActionType Type, int Amount) 구조를 따르며, PlayerActionType은 Fold/Check/Call/Raise/AllIn 등을 포함한다."
+    },
+    {
+      "id": 7,
+      "task": "FixedRandomSource 작성",
+      "layer": "Gateway",
+      "description": "Assets/Scripts/Gateway/Stubs/FixedRandomSource.cs — 통합 테스트용으로 셔플 결과가 고정된 IRandomSource 구현체.\n\n• 생성자: int[] 또는 List<int>를 받아 내부 시퀀스로 저장한다. 이 시퀀스는 Fisher-Yates 셔플의 각 단계에서 사용될 난수 값을 순서대로 제공한다.\n• 대안 설계: 생성자에서 Card[] 형태의 고정 덱 순서를 직접 받아, Shuffle 호출 시 해당 순서 그대로 덱을 설정하는 방식도 허용한다(테스트 가독성 우선).\n• Next(int minInclusive, int maxExclusive) 호출 시 내부 인덱스를 순차적으로 증가시키며 사전 정의된 값을 반환한다.\n• 시퀀스 소진 시 InvalidOperationException을 던진다."
+    },
+    {
+      "id": 8,
+      "task": "통합 테스트 — 시나리오 1·2 (기본 쇼다운 / 조기 종료)",
+      "layer": "None",
+      "description": "Assets/Tests/EditMode/GameRoundTests_Basic.cs — Unity Test Framework(EditMode)를 사용한 통합 테스트.\n\n[시나리오 1 — 기본 쇼다운]\n• 4명 플레이어, 초기 칩 각 1000, 블라인드 10/20.\n• FixedRandomSource로 덱 순서 고정: 각 플레이어에게 특정 홀카드가 배분되고, 커뮤니티 카드도 고정.\n• StubPlayerActionProvider: 모든 플레이어가 모든 스트리트에서 Check 또는 Call만 수행.\n• 검증: 쇼다운 도달 확인, HandEvaluator에 의해 최고 핸드 보유 플레이어가 메인 팟 수령, 4명 칩 합계 = 4000 불변.\n\n[시나리오 2 — 조기 종료]\n• 4명 플레이어, 초기 칩 각 1000, 블라인드 10/20.\n• StubPlayerActionProvider: UTG가 Raise(100), 나머지 3명 Fold.\n• 검증: 커뮤니티 카드가 한 장도 딜링되지 않음, Raiser가 블라인드(SB+BB = 30)를 포함한 팟 수령, OnShowdown 이벤트가 호출되지 않음, 칩 합계 불변."
+    },
+    {
+      "id": 9,
+      "task": "통합 테스트 — 시나리오 3·4 (사이드 팟 / 스플릿 팟)",
+      "layer": "None",
+      "description": "Assets/Tests/EditMode/GameRoundTests_Pots.cs — Unity Test Framework(EditMode) 통합 테스트.\n\n[시나리오 3 — 사이드 팟]\n• 3명 플레이어, 칩 보유량: A=100, B=200, C=500, 블라인드 10/20.\n• StubPlayerActionProvider: A AllIn(100), B AllIn(200), C Call(200).\n• 고정 덱: A가 최고 핸드, B가 두 번째, C가 최하위.\n• 검증: 메인 팟(100×3=300) → A 수령, 사이드 팟((200-100)×2=200) → B 수령, C는 남은 칩(500-200=300) 유지. 최종 칩: A=300, B=200, C=300. 합계 = 800 불변.\n\n[시나리오 4 — 스플릿 팟]\n• 2명 플레이어, 칩 각 500, 블라인드 10/20.\n• 고정 덱: 커뮤니티 카드 5장이 양쪽 홀카드보다 강해서 최종 족보가 동일(예: 보드에 로열 스트레이트 플러시 구성, 또는 동일 투페어+동일 키커).\n• StubPlayerActionProvider: 양측 Check → Check → Check → Check.\n• 검증: 팟이 정확히 2등분, 홀수 칩은 딜러에 가까운 플레이어에게 1칩 추가, 칩 합계 불변."
+    },
+    {
+      "id": 10,
+      "task": "통합 테스트 — 시나리오 5·6 (헤즈업 블라인드 / 연속 라운드)",
+      "layer": "None",
+      "description": "Assets/Tests/EditMode/GameRoundTests_DealerFlow.cs — Unity Test Framework(EditMode) 통합 테스트.\n\n[시나리오 5 — 헤즈업 블라인드]\n• 2명 플레이어, 칩 각 500, 블라인드 10/20, 딜러 인덱스 = 0.\n• 검증: Player[0]이 SB(10) 납부, Player[1]이 BB(20) 납부. 프리플롭 첫 액션 차례가 Player[0](SB=딜러)인지 확인. 포스트플롭 첫 액션 차례가 Player[1](BB=비딜러)인지 확인.\n• StubPlayerActionProvider: 프리플롭 Player[0] Call, 이후 모든 스트리트 Check.\n• 최종 쇼다운까지 진행 후 블라인드 구조 위반이 없었는지 이벤트 로그로 검증.\n\n[시나리오 6 — 연속 라운드]\n• 3명 플레이어, 칩 각 1000, 블라인드 10/20.\n• PlayRound를 2회 연속 호출.\n• 1차 라운드: 딜러=0, SB=1, BB=2. 프리플롭에서 Player[0] Fold, Player[1]·[2] Check로 쇼다운.\n• 2차 라운드: GetNextDealer에 의해 딜러=1, SB=2, BB=0 으로 이동 확인.\n• 검증: 딜러 인덱스가 정확히 이동했는지, 2핸드 종료 후 전체 칩 합계 = 3000 불변."
+    },
+    {
+      "id": 11,
+      "task": "통합 테스트 — 시나리오 7 (10인 풀 테이블 칩 보존 검증)",
+      "layer": "None",
+      "description": "Assets/Tests/EditMode/GameRoundTests_FullTable.cs — Unity Test Framework(EditMode) 통합 테스트.\n\n[시나리오 7 — 10인 풀 테이블]\n• 10명 플레이어, 칩 보유량: Player[0]~[4] = 500, Player[5]~[9] = 1000. 초기 총합 = 7500.\n• 블라인드 25/50.\n• StubPlayerActionProvider 액션 스크립트:\n  - PreFlop: Player[3] Raise(150), Player[7] AllIn(1000), Player[0] Call(→AllIn 500), Player[1] Fold, Player[2] Fold, Player[4] Fold, Player[5] Call(1000), Player[6] Fold, Player[8] Fold, Player[9] Fold, Player[3] Fold.\n  - Flop/Turn/River: 남은 Active 플레이어(Player[5])는 이미 다른 플레이어가 AllIn이므로 추가 베팅 없이 자동 진행.\n• FixedRandomSource로 덱 고정: Player[0]이 최고 핸드, Player[7]이 두 번째, Player[5]가 세 번째.\n• 검증:\n  1. 메인 팟(500×3) → Player[0] 수령.\n  2. 사이드 팟((1000-500)×2) → Player[7] 수령.\n  3. 나머지 칩 계산 정확성.\n  4. 최종 10명 칩 합계 = 7500 (칩 보존 법칙).\n  5. AllIn 후 Chips가 0인 플레이어는 Eliminated 상태로 전환되었는지 확인."
+    }
+  ]
+}
+```
