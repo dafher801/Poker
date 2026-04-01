@@ -122,20 +122,6 @@ namespace TexasHoldem.Usecase
         // Task 1-2-5: 5~7장 중 최선 핸드 선택
         // ----------------------------------------------------------------
 
-        // a가 b보다 높은 핸드인지 판단하는 내부 헬퍼 (Task 1-2-6의 Compare 추가 전까지 사용)
-        private static bool IsBetter(HandEvaluation a, HandEvaluation b)
-        {
-            int rankDiff = (int)a.Rank - (int)b.Rank;
-            if (rankDiff != 0) return rankDiff > 0;
-
-            for (int i = 0; i < a.TieBreakers.Count && i < b.TieBreakers.Count; i++)
-            {
-                int diff = a.TieBreakers[i] - b.TieBreakers[i];
-                if (diff != 0) return diff > 0;
-            }
-            return false;
-        }
-
         /// <summary>
         /// 5~7장의 카드를 받아 가능한 모든 5장 조합 중 가장 높은 HandEvaluation을 반환한다.
         /// 5장 미만이거나 7장 초과이면 ArgumentException을 던진다.
@@ -154,10 +140,35 @@ namespace TexasHoldem.Usecase
             foreach (var combo in combinations)
             {
                 var eval = EvaluateFive(combo);
-                if (best == null || IsBetter(eval, best))
+                if (best == null || Compare(eval, best) > 0)
                     best = eval;
             }
             return best;
+        }
+
+        // ----------------------------------------------------------------
+        // Task 1-2-6: 두 HandEvaluation 비교
+        // ----------------------------------------------------------------
+
+        /// <summary>
+        /// a와 b를 비교한다.
+        /// 반환 값: 양수 → a 승, 음수 → b 승, 0 → 무승부(스플릿 팟).
+        /// </summary>
+        public static int Compare(HandEvaluation a, HandEvaluation b)
+        {
+            // (1) 족보 등급 비교
+            int rankDiff = (int)a.Rank - (int)b.Rank;
+            if (rankDiff != 0) return rankDiff;
+
+            // (2) TieBreakers 순차 비교
+            for (int i = 0; i < a.TieBreakers.Count && i < b.TieBreakers.Count; i++)
+            {
+                int diff = a.TieBreakers[i] - b.TieBreakers[i];
+                if (diff != 0) return diff;
+            }
+
+            // (3) 완전 동점
+            return 0;
         }
     }
 }
