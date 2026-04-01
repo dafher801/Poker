@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(printf '\\\\xEF\\\\xBB\\\\xBF')",
-      "Bash(printf '\\\\xef\\\\xbb\\\\xbf')"
+      "Bash(printf '\\\\xef\\\\xbb\\\\xbf')",
+      "Bash(python3:*)"
     ]
   }
 }
