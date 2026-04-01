@@ -35,6 +35,6 @@ Unity 2D 포커 게임. 바이브 코딩의 한계를 검증하기 위해 Claude
 - C# 네이밍: PascalCase (클래스, 메서드, 프로퍼티), _camelCase (private 필드)
 - 한 파일에 한 클래스
 - 모든 소스 파일 상단에 코드의 역할과 사용 방법을 주석으로 명시
-- 실행 테스트 전용 코드는 `Assets/Scripts/Test/`에 배치
+- 테스트를 위해 필요한 코드는 `Assets/Tests/`내부 혹은 그 하위 폴더에 배치
 - 불필요한 `using` 제거
 - `Library/`, `Temp/`, `obj/` 수정 금지
