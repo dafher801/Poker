@@ -3,7 +3,8 @@
     "allow": [
       "Bash(printf '\\\\xEF\\\\xBB\\\\xBF')",
       "Bash(printf '\\\\xef\\\\xbb\\\\xbf')",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/Usecase/HandEvaluator.cs\")"
     ]
   }
 }
