@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Entity;
 using TexasHoldem.Entity;
 
 namespace TexasHoldem.Usecase

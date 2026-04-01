@@ -3,7 +3,7 @@
 // 정수 값의 대소 비교만으로 족보 등급의 우열을 판단할 수 있다.
 // 예: HandRank.Flush > HandRank.Straight → (int)Flush=5 > (int)Straight=4
 
-namespace Entity
+namespace TexasHoldem.Entity
 {
     public enum HandRank
     {
