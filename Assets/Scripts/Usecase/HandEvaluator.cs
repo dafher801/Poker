@@ -117,5 +117,47 @@ namespace TexasHoldem.Usecase
             // HighCard — [5장 랭크 내림차순]
             return new HandEvaluation(HandRank.HighCard, new List<int>(ranks));
         }
+
+        // ----------------------------------------------------------------
+        // Task 1-2-5: 5~7장 중 최선 핸드 선택
+        // ----------------------------------------------------------------
+
+        // a가 b보다 높은 핸드인지 판단하는 내부 헬퍼 (Task 1-2-6의 Compare 추가 전까지 사용)
+        private static bool IsBetter(HandEvaluation a, HandEvaluation b)
+        {
+            int rankDiff = (int)a.Rank - (int)b.Rank;
+            if (rankDiff != 0) return rankDiff > 0;
+
+            for (int i = 0; i < a.TieBreakers.Count && i < b.TieBreakers.Count; i++)
+            {
+                int diff = a.TieBreakers[i] - b.TieBreakers[i];
+                if (diff != 0) return diff > 0;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 5~7장의 카드를 받아 가능한 모든 5장 조합 중 가장 높은 HandEvaluation을 반환한다.
+        /// 5장 미만이거나 7장 초과이면 ArgumentException을 던진다.
+        /// </summary>
+        public static HandEvaluation Evaluate(List<Card> cards)
+        {
+            if (cards == null || cards.Count < 5 || cards.Count > 7)
+                throw new ArgumentException("카드 수는 5~7장이어야 합니다.", nameof(cards));
+
+            if (cards.Count == 5)
+                return EvaluateFive(cards);
+
+            // 6~7장: 모든 5장 조합 중 최선 선택
+            var combinations = CombinationUtil.GetCombinations(cards, 5);
+            HandEvaluation best = null;
+            foreach (var combo in combinations)
+            {
+                var eval = EvaluateFive(combo);
+                if (best == null || IsBetter(eval, best))
+                    best = eval;
+            }
+            return best;
+        }
     }
 }
