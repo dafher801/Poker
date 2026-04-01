@@ -1,4 +1,4 @@
-// EntityTests.cs
+﻿// EntityTests.cs
 // Entity 계층 단위 테스트 모음 (EditMode).
 // Unity Test Framework(NUnit)을 사용하여 Deck, Card, PlayerData,
 // PlayerAction, BlindInfo, GameState의 유효성 규칙을 검증한다.

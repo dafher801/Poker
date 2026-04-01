@@ -1,4 +1,6 @@
 ﻿<Solution>
+  <Project Path="Poker.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="Poker.EditMode.Tests.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
 </Solution>

@@ -1,4 +1,4 @@
-// Pot.cs
+﻿// Pot.cs
 // 포커 게임의 팟(상금 풀)을 나타내는 엔티티.
 // Amount는 0 이상이어야 하며, EligiblePlayerIds는 null 불가.
 // AddAmount(int)로 팟 금액을 증가시키고, 음수 추가는 방지한다.

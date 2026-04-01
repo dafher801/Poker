@@ -1,0 +1,22 @@
+{
+    "name": "Poker.EditMode.Tests",
+    "rootNamespace": "Poker.EditMode.Tests",
+    "references": [
+        "GUID:b460ef34bb188ba48b72a9a2055695ce"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,4 +1,4 @@
-// StubPlayerActionProvider.cs
+﻿// StubPlayerActionProvider.cs
 // 테스트 전용 IPlayerActionProvider 구현체.
 // 생성자 또는 EnqueueAction으로 PlayerAction을 Queue에 미리 적재하고,
 // GetAction 호출 시 큐에서 순서대로 반환한다. 큐가 비면 InvalidOperationException을 던진다.

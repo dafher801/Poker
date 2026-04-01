@@ -1,4 +1,4 @@
-// BlindInfo.cs
+﻿// BlindInfo.cs
 // 블라인드 금액 정보를 나타내는 불변 값 객체.
 // SmallBlind는 1 이상이어야 하고, BigBlind는 SmallBlind 이상이어야 한다.
 // 위반 시 ArgumentException을 던진다.

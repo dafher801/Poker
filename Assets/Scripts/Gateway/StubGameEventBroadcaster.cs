@@ -1,4 +1,4 @@
-// StubGameEventBroadcaster.cs
+﻿// StubGameEventBroadcaster.cs
 // IGameEventBroadcaster의 테스트용 구현체.
 // 각 이벤트 메서드 호출 시 이벤트 이름과 파라미터를 내부 로그에 기록한다.
 // 테스트 코드에서 GetLog()로 기록된 이벤트를 조회하여 브로드캐스터 호출 여부를 검증한다.

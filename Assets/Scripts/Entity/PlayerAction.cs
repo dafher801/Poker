@@ -1,4 +1,4 @@
-// PlayerAction.cs
+﻿// PlayerAction.cs
 // 플레이어 한 명의 단일 행동을 나타내는 불변 값 객체.
 // PlayerId, ActionType, Amount를 보유하며 ActionType별 Amount 유효성을 생성자에서 검증한다.
 // - Fold, Check: Amount는 반드시 0이어야 한다.

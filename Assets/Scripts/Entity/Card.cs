@@ -1,4 +1,4 @@
-// Card.cs
+﻿// Card.cs
 // 카드 한 장을 나타내는 불변 값 객체.
 // Suit와 Rank를 조합하여 고유한 카드를 표현한다.
 // IEquatable<Card>를 구현하여 동등성 비교를 지원하고,

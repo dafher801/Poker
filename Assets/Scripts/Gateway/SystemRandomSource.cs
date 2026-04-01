@@ -1,4 +1,4 @@
-// SystemRandomSource.cs
+﻿// SystemRandomSource.cs
 // IRandomSource의 실제 구현체.
 // System.Random 기반 Fisher-Yates 알고리즘으로 리스트를 셔플한다.
 // 생성자에 seed를 전달하면 재현 가능한 셔플을 수행할 수 있다.

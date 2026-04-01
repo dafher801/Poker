@@ -1,4 +1,4 @@
-// GameState.cs
+﻿// GameState.cs
 // 텍사스 홀덤 게임 한 핸드의 전체 상태를 담는 Entity.
 // Players(2~10명), CommunityCards(최대 5장), Pots, Phase, DealerIndex,
 // Blinds, CurrentPlayerIndex를 관리하며 유효성 위반 시 예외를 던진다.

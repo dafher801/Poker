@@ -1,4 +1,4 @@
-// Deck.cs
+﻿// Deck.cs
 // 52장의 카드로 구성된 덱 엔티티.
 // 생성 시 모든 Suit × Rank 조합으로 52장의 고유한 카드를 초기화한다.
 // Shuffle(IRandomSource)로 외부 셔플 전략에 셔플을 위임하고,

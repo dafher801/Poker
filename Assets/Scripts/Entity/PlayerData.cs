@@ -1,4 +1,4 @@
-// PlayerData.cs
+﻿// PlayerData.cs
 // 텍사스 홀덤 플레이어 한 명의 상태를 담는 Entity.
 // Id, Name, Chips, HoleCards, CurrentBet, Status, SeatIndex를 관리하며
 // 유효성 위반 시 예외를 발생시킨다.
