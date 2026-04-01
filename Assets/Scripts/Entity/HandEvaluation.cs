@@ -6,7 +6,7 @@
 
 using System.Collections.Generic;
 
-namespace Entity
+namespace TexasHoldem.Entity
 {
     public class HandEvaluation
     {
