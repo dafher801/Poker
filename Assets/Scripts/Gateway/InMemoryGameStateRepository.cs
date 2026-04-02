@@ -13,13 +13,11 @@ namespace TexasHoldem.Gateway
 
         public void Save(GameState state)
         {
-            _state = state;
+            _state = state.DeepClone();
         }
 
         public GameState Load()
         {
-            if (_state == null)
-                throw new System.InvalidOperationException("저장된 게임 상태가 없습니다.");
             return _state;
         }
     }
