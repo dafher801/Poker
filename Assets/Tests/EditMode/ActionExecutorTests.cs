@@ -119,7 +119,8 @@ namespace TexasHoldem.Tests.EditMode
             new PotManager().CollectBets(state);
 
             Assert.AreEqual(1, state.Pots.Count);
-            Assert.AreEqual(200, state.Pots[0].Amount);
+            // P1 콜 200 + P2 기존 베팅 200 = 총 400
+            Assert.AreEqual(400, state.Pots[0].Amount);
         }
 
         [Test]
@@ -194,7 +195,8 @@ namespace TexasHoldem.Tests.EditMode
             new PotManager().CollectBets(state);
 
             Assert.AreEqual(1, state.Pots.Count);
-            Assert.AreEqual(400, state.Pots[0].Amount);
+            // P1 레이즈 400 + P2 기존 베팅 200 = 총 600
+            Assert.AreEqual(600, state.Pots[0].Amount);
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -269,7 +271,8 @@ namespace TexasHoldem.Tests.EditMode
             new PotManager().CollectBets(state);
 
             Assert.AreEqual(1, state.Pots.Count);
-            Assert.AreEqual(500, state.Pots[0].Amount);
+            // P1 올인 500 + P2 기존 베팅 200 = 총 700
+            Assert.AreEqual(700, state.Pots[0].Amount);
         }
 
         // ────────────────────────────────────────────────────────────────
