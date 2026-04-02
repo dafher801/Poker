@@ -145,6 +145,8 @@ namespace TexasHoldem.Usecase
                 // 폴드로 1명만 남았는지 확인
                 if (_roundEndEvaluator.IsOnlyOnePlayerRemaining(state.Players, out int winningSeatIndex))
                 {
+                    // ActionExecutorが既にPotに加算済みなのでクリアしてからCalculateSidePotsで再構築
+                    state.Pots.Clear();
                     _potManager.CalculateSidePots(state);
 
                     int totalPot = 0;
@@ -173,7 +175,8 @@ namespace TexasHoldem.Usecase
                 currentIndex = (currentIndex + 1) % playerCount;
             }
 
-            // 베팅액 수집 및 사이드 팟 계산
+            // ActionExecutor가 이미 Pots에 금액을 추가했으므로 초기화 후 CurrentBet 기반으로 재구성
+            state.Pots.Clear();
             _potManager.CalculateSidePots(state);
 
             broadcaster.OnPotUpdated(state.Pots);
