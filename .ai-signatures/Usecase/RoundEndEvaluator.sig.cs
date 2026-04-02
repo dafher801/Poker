@@ -1,10 +1,11 @@
 ﻿// Source: Assets/Scripts/Usecase/RoundEndEvaluator.cs
 // RoundEndEvaluator.cs
-// 베팅 라운드의 종료 조건과 핸드 즉시 종료(1명만 남은 경우)를 판정하는 순수 C# 클래스.
+// 베팅 라운드의 종료 조건과 핸드 즉시 종료(1명만 남은 경우), 쇼다운 스킵 여부를 판정하는 순수 C# 클래스.
 // 사용 방법:
 //   var evaluator = new RoundEndEvaluator();
 //   bool roundDone = evaluator.IsBettingRoundComplete(state.Players, highestBet, hasActed);
 //   bool handDone = evaluator.IsOnlyOnePlayerRemaining(state.Players, out int winnerIndex);
+//   bool skipToShowdown = evaluator.ShouldSkipToShowdown(state.Players);
 
 using System.Collections.Generic;
 using TexasHoldem.Entity;
@@ -58,6 +59,32 @@ namespace TexasHoldem.Usecase
 
             winningSeatIndex = -1;
             return false;
+        }
+
+        // Folded가 아닌 플레이어가 모두 AllIn이거나, AllIn + Active 1명인 경우
+        // 남은 페이즈를 스킵하고 쇼다운으로 직행해야 함을 반환한다.
+        // 즉, 추가 베팅 액션이 의미 없는 상황을 감지한다.
+        public bool ShouldSkipToShowdown(IReadOnlyList<PlayerData> players) { /* ... */ }
+        {
+            int activeCount = 0;
+            int allInCount = 0;
+
+            for (int i = 0; i < players.Count; i++)
+            {
+                PlayerStatus status = players[i].Status;
+
+                if (status == PlayerStatus.Active)
+                    activeCount++;
+                else if (status == PlayerStatus.AllIn)
+                    allInCount++;
+            }
+
+            // 참여 중인 플레이어(Active + AllIn)가 2명 미만이면 스킵 불필요 (IsOnlyOnePlayerRemaining이 처리)
+            if (activeCount + allInCount < 2)
+                return false;
+
+            // 모든 참여자가 AllIn이거나, Active가 1명뿐이고 나머지가 AllIn인 경우
+            return activeCount <= 1 && allInCount >= 1;
         }
     }
 }

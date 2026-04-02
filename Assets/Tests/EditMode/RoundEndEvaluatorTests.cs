@@ -1,5 +1,5 @@
 ﻿// RoundEndEvaluatorTests.cs
-// RoundEndEvaluator의 IsBettingRoundComplete, IsOnlyOnePlayerRemaining을 검증하는 EditMode 테스트.
+// RoundEndEvaluator의 IsBettingRoundComplete, IsOnlyOnePlayerRemaining, ShouldSkipToShowdown을 검증하는 EditMode 테스트.
 
 using System.Collections.Generic;
 using NUnit.Framework;
@@ -200,6 +200,88 @@ namespace TexasHoldem.Tests.EditMode
 
             Assert.IsFalse(_evaluator.IsOnlyOnePlayerRemaining(players, out int winner));
             Assert.AreEqual(-1, winner);
+        }
+
+        // === ShouldSkipToShowdown ===
+
+        [Test]
+        public void ShouldSkipToShowdown_AllAllIn_ReturnsTrue()
+        {
+            var players = new List<PlayerData>
+            {
+                CreatePlayer("p0", 0, PlayerStatus.AllIn),
+                CreatePlayer("p1", 1, PlayerStatus.AllIn),
+                CreatePlayer("p2", 2, PlayerStatus.Folded)
+            };
+
+            Assert.IsTrue(_evaluator.ShouldSkipToShowdown(players));
+        }
+
+        [Test]
+        public void ShouldSkipToShowdown_OneActiveRestAllIn_ReturnsTrue()
+        {
+            var players = new List<PlayerData>
+            {
+                CreatePlayer("p0", 0, PlayerStatus.Active),
+                CreatePlayer("p1", 1, PlayerStatus.AllIn),
+                CreatePlayer("p2", 2, PlayerStatus.AllIn),
+                CreatePlayer("p3", 3, PlayerStatus.Folded)
+            };
+
+            Assert.IsTrue(_evaluator.ShouldSkipToShowdown(players));
+        }
+
+        [Test]
+        public void ShouldSkipToShowdown_TwoActive_ReturnsFalse()
+        {
+            var players = new List<PlayerData>
+            {
+                CreatePlayer("p0", 0, PlayerStatus.Active),
+                CreatePlayer("p1", 1, PlayerStatus.Active),
+                CreatePlayer("p2", 2, PlayerStatus.Folded)
+            };
+
+            Assert.IsFalse(_evaluator.ShouldSkipToShowdown(players));
+        }
+
+        [Test]
+        public void ShouldSkipToShowdown_TwoActiveOneAllIn_ReturnsFalse()
+        {
+            var players = new List<PlayerData>
+            {
+                CreatePlayer("p0", 0, PlayerStatus.Active),
+                CreatePlayer("p1", 1, PlayerStatus.Active),
+                CreatePlayer("p2", 2, PlayerStatus.AllIn)
+            };
+
+            Assert.IsFalse(_evaluator.ShouldSkipToShowdown(players));
+        }
+
+        [Test]
+        public void ShouldSkipToShowdown_OneActiveNoAllIn_ReturnsFalse()
+        {
+            // AllIn이 없으면 스킵 불필요 (IsOnlyOnePlayerRemaining이 처리)
+            var players = new List<PlayerData>
+            {
+                CreatePlayer("p0", 0, PlayerStatus.Active),
+                CreatePlayer("p1", 1, PlayerStatus.Folded),
+                CreatePlayer("p2", 2, PlayerStatus.Folded)
+            };
+
+            Assert.IsFalse(_evaluator.ShouldSkipToShowdown(players));
+        }
+
+        [Test]
+        public void ShouldSkipToShowdown_OneActiveOneAllIn_ReturnsTrue()
+        {
+            // 헤즈업에서 한 명 올인, 한 명 Active → 더 이상 베팅 의미 없음
+            var players = new List<PlayerData>
+            {
+                CreatePlayer("p0", 0, PlayerStatus.Active),
+                CreatePlayer("p1", 1, PlayerStatus.AllIn)
+            };
+
+            Assert.IsTrue(_evaluator.ShouldSkipToShowdown(players));
         }
     }
 }
