@@ -116,6 +116,7 @@ namespace TexasHoldem.Tests.EditMode
             var action = new PlayerAction("P1", ActionType.Call, 200);
 
             _executor.Execute(state, action);
+            new PotManager().CollectBets(state);
 
             Assert.AreEqual(1, state.Pots.Count);
             Assert.AreEqual(200, state.Pots[0].Amount);
@@ -190,6 +191,7 @@ namespace TexasHoldem.Tests.EditMode
             var action = new PlayerAction("P1", ActionType.Raise, 400);
 
             _executor.Execute(state, action);
+            new PotManager().CollectBets(state);
 
             Assert.AreEqual(1, state.Pots.Count);
             Assert.AreEqual(400, state.Pots[0].Amount);
@@ -264,6 +266,7 @@ namespace TexasHoldem.Tests.EditMode
             var action = new PlayerAction("P1", ActionType.AllIn, 500);
 
             _executor.Execute(state, action);
+            new PotManager().CollectBets(state);
 
             Assert.AreEqual(1, state.Pots.Count);
             Assert.AreEqual(500, state.Pots[0].Amount);
@@ -323,6 +326,7 @@ namespace TexasHoldem.Tests.EditMode
             _executor.Execute(state, new PlayerAction("P1", ActionType.Raise, 200));
             // P2 콜 200
             _executor.Execute(state, new PlayerAction("P2", ActionType.Call, 200));
+            new PotManager().CollectBets(state);
 
             Assert.AreEqual(800, players[0].Chips);
             Assert.AreEqual(800, players[1].Chips);
