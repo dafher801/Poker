@@ -23,8 +23,11 @@ namespace TexasHoldem.Usecase
         public GameRoundUsecase()
         {
             var actionValidator = new ActionValidator();
+            var actionExecutor = new ActionExecutor();
+            var turnOrderResolver = new TurnOrderResolver();
+            var roundEndEvaluator = new RoundEndEvaluator();
             _potManager = new PotManager();
-            _bettingRoundUsecase = new BettingRoundUsecase(actionValidator, _potManager);
+            _bettingRoundUsecase = new BettingRoundUsecase(actionValidator, actionExecutor, turnOrderResolver, roundEndEvaluator, _potManager);
             _winnerResolver = new WinnerResolver();
         }
 

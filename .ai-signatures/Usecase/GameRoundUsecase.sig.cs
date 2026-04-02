@@ -17,7 +17,7 @@ namespace TexasHoldem.Usecase
 {
     public class GameRoundUsecase
     {
-        // 생성자: ActionValidator, PotManager, BettingRoundUsecase, WinnerResolver를 내부에서 생성한다.
+        // 생성자: ActionValidator, ActionExecutor, TurnOrderResolver, RoundEndEvaluator, PotManager, BettingRoundUsecase, WinnerResolver를 내부에서 생성한다.
         public GameRoundUsecase() { /* ... */ }
 
         // 한 핸드의 전체 흐름을 비동기로 실행한다.

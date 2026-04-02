@@ -16,6 +16,9 @@ namespace TexasHoldem.Tests.EditMode
     public class BettingRoundUsecaseTests
     {
         private ActionValidator _actionValidator;
+        private ActionExecutor _actionExecutor;
+        private TurnOrderResolver _turnOrderResolver;
+        private RoundEndEvaluator _roundEndEvaluator;
         private PotManager _potManager;
         private BettingRoundUsecase _usecase;
 
@@ -23,8 +26,11 @@ namespace TexasHoldem.Tests.EditMode
         public void SetUp()
         {
             _actionValidator = new ActionValidator();
+            _actionExecutor = new ActionExecutor();
+            _turnOrderResolver = new TurnOrderResolver();
+            _roundEndEvaluator = new RoundEndEvaluator();
             _potManager = new PotManager();
-            _usecase = new BettingRoundUsecase(_actionValidator, _potManager);
+            _usecase = new BettingRoundUsecase(_actionValidator, _actionExecutor, _turnOrderResolver, _roundEndEvaluator, _potManager);
         }
 
         private GameState CreateGameState(List<PlayerData> players, int bigBlind = 100,
@@ -71,7 +77,9 @@ namespace TexasHoldem.Tests.EditMode
             });
             var broadcaster = new StubGameEventBroadcaster();
 
-            _usecase.RunBettingRound(state, actionProvider, broadcaster).Wait();
+            var result = _usecase.RunBettingRound(state, actionProvider, broadcaster).Result;
+
+            Assert.AreEqual(BettingRoundResultType.RoundComplete, result.Type, "정상 라운드 종료여야 한다");
 
             // 팟에 추가 금액 없음
             int totalPot = state.Pots.Sum(p => p.Amount);
@@ -140,11 +148,13 @@ namespace TexasHoldem.Tests.EditMode
             });
             var broadcaster = new StubGameEventBroadcaster();
 
-            _usecase.RunBettingRound(state, actionProvider, broadcaster).Wait();
+            var result = _usecase.RunBettingRound(state, actionProvider, broadcaster).Result;
 
             Assert.AreEqual(PlayerStatus.Folded, state.Players[1].Status, "P2는 Folded여야 한다");
             Assert.AreEqual(PlayerStatus.Folded, state.Players[2].Status, "P3는 Folded여야 한다");
             Assert.AreEqual(PlayerStatus.Active, state.Players[0].Status, "P1은 Active여야 한다");
+            Assert.AreEqual(BettingRoundResultType.HandEndedByFold, result.Type, "폴드로 핸드 종료여야 한다");
+            Assert.AreEqual(0, result.WinningSeatIndex, "P1(index 0)이 승자여야 한다");
         }
 
         // ────────────────────────────────────────────────────────────────
