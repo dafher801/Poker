@@ -190,7 +190,7 @@ namespace TexasHoldem.Usecase
                         allCards.AddRange(state.CommunityCards);
 
                         var bestFive = FindBestFiveCards(allCards);
-                        var eval = HandEvaluator.Evaluate(bestFive);
+                        var eval = HandEvaluator.Evaluate(new List<Card>(bestFive));
                         showdownResults.Add((player.Id, eval.Rank, bestFive));
                     }
                 }
