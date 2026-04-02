@@ -95,7 +95,7 @@ namespace TexasHoldem.Usecase
             }
 
             // 베팅액 수집 및 사이드 팟 계산
-            _potManager.CollectBets(state);
+            // CalculateSidePots가 내부적으로 CollectBets를 처리하므로 직접 호출하지 않는다.
             _potManager.CalculateSidePots(state);
 
             broadcaster.OnPotUpdated(state.Pots);
