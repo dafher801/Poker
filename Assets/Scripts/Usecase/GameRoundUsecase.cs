@@ -75,25 +75,16 @@ namespace TexasHoldem.Usecase
             var deck = new Deck();
             deck.Shuffle(random);
 
-            // SB부터 시계 방향으로 딜링 순서 결정
-            var dealOrder = BuildDealOrder(newDealer, state.Players);
-
-            // 1바퀴째: 각 플레이어에게 첫 번째 카드
-            var firstCards = new Dictionary<int, Card>();
-            foreach (int idx in dealOrder)
+            foreach (var player in state.Players)
             {
-                firstCards[idx] = deck.Draw();
-            }
-
-            // 2바퀴째: 각 플레이어에게 두 번째 카드 배분 및 알림
-            foreach (int idx in dealOrder)
-            {
-                var card1 = firstCards[idx];
-                var card2 = deck.Draw();
-                var player = state.Players[idx];
-                player.AddHoleCard(card1);
-                player.AddHoleCard(card2);
-                broadcaster.OnHoleCardsDealt(player.Id, card1, card2);
+                if (player.Status == PlayerStatus.Active || player.Status == PlayerStatus.AllIn)
+                {
+                    var card1 = deck.Draw();
+                    var card2 = deck.Draw();
+                    player.AddHoleCard(card1);
+                    player.AddHoleCard(card2);
+                    broadcaster.OnHoleCardsDealt(player.Id, card1, card2);
+                }
             }
 
             // === Phase 3 — 베팅 라운드 반복 ===
@@ -116,7 +107,6 @@ namespace TexasHoldem.Usecase
             if (!earlyWin && !IsEarlyTermination(state))
             {
                 state.Phase = GamePhase.Flop;
-                deck.Draw(); // 번(burn) 카드
                 var flopCards = new List<Card> { deck.Draw(), deck.Draw(), deck.Draw() };
                 foreach (var card in flopCards)
                 {
@@ -137,7 +127,6 @@ namespace TexasHoldem.Usecase
             if (!earlyWin && !IsEarlyTermination(state))
             {
                 state.Phase = GamePhase.Turn;
-                deck.Draw(); // 번(burn) 카드
                 var turnCard = deck.Draw();
                 state.AddCommunityCard(turnCard);
                 broadcaster.OnCommunityCardsDealt(GamePhase.Turn, new List<Card> { turnCard });
@@ -155,7 +144,6 @@ namespace TexasHoldem.Usecase
             if (!earlyWin && !IsEarlyTermination(state))
             {
                 state.Phase = GamePhase.River;
-                deck.Draw(); // 번(burn) 카드
                 var riverCard = deck.Draw();
                 state.AddCommunityCard(riverCard);
                 broadcaster.OnCommunityCardsDealt(GamePhase.River, new List<Card> { riverCard });
@@ -237,28 +225,6 @@ namespace TexasHoldem.Usecase
             state.LastRaiseSize = state.Blinds.BigBlind;
 
             repository.Save(state);
-        }
-
-        /// <summary>
-        /// 딜러 다음 좌석(SB)부터 시계 방향으로 딜링 순서를 생성한다.
-        /// Active 또는 AllIn 상태인 플레이어만 포함한다.
-        /// </summary>
-        private static List<int> BuildDealOrder(int dealerIndex, List<PlayerData> players)
-        {
-            int count = players.Count;
-            var order = new List<int>();
-
-            for (int i = 1; i <= count; i++)
-            {
-                int idx = (dealerIndex + i) % count;
-                var player = players[idx];
-                if (player.Status == PlayerStatus.Active || player.Status == PlayerStatus.AllIn)
-                {
-                    order.Add(idx);
-                }
-            }
-
-            return order;
         }
 
         private static void PostBlind(PlayerData player, int blindAmount)
