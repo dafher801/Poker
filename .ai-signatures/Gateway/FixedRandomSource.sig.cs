@@ -1,18 +1,22 @@
-﻿// Source: Assets/Scripts/Gateway/FixedRandomSource.cs
-// FixedRandomSource.cs
-// IRandomSource의 테스트용 구현체.
-// Shuffle 호출 시 리스트를 변경하지 않아 원래 순서를 유지한다.
-// 테스트에서 카드 순서를 예측 가능하게 만드는 데 사용한다.
-
-using System.Collections.Generic;
-
-namespace TexasHoldem.Gateway
-{
-    public class FixedRandomSource : IRandomSource
-    {
+// Source: Assets/Scripts/Gateway/FixedRandomSource.cs
+// FixedRandomSource.cs
+// 통합 테스트용 IRandomSource 구현체.
+// 두 가지 모드를 지원한다:
+// 1. 고정 덱 모드: Card[] 배열을 받아 Shuffle 호출 시 해당 순서로 덱을 재배치한다.
+// 2. 고정 난수 모드: int[] 시퀀스를 받아 Fisher-Yates 셔플의 각 단계에서 사용할 난수를 순차 제공한다.
+// Next(int, int) 메서드로 사전 정의된 난수 값을 순서대로 반환하며, 시퀀스 소진 시 예외를 던진다.
+
+using System;
+using System.Collections.Generic;
+using TexasHoldem.Entity;
+
+namespace TexasHoldem.Gateway
+{
+    public class FixedRandomSource : IRandomSource
+    {
+        public FixedRandomSource(Card[] fixedDeck) { /* ... */ }
+        public FixedRandomSource(int[] randomSequence) { /* ... */ }
+        public int Next(int minInclusive, int maxExclusive) { /* ... */ }
         public void Shuffle<T>(IList<T> list) { /* ... */ }
-        {
-            // 의도적으로 아무것도 하지 않는다. 순서를 그대로 유지한다.
-        }
-    }
+    }
 }
