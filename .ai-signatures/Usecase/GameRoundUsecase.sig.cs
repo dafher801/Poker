@@ -6,6 +6,8 @@
 //   await usecase.PlayRound(state, random, actionProvider, broadcaster, repository);
 // Phase 1(초기화) → Phase 2(딜링) → Phase 3(베팅 라운드 반복) →
 // Phase 4(쇼다운/조기 종료) → Phase 5(정리) 순서로 진행한다.
+// BlindPositionCalculator, BettingRoundUsecase, WinnerResolver, PotManager 등
+// 하위 유스케이스에 위임하여 각 단계를 처리한다.
 
 using System.Collections.Generic;
 using System.Linq;
@@ -74,30 +76,48 @@ namespace TexasHoldem.Usecase
             var deck = new Deck();
             deck.Shuffle(random);
 
-            foreach (var player in state.Players)
+            // SB부터 시계 방향으로 딜링 순서 결정
+            var dealOrder = BuildDealOrder(newDealer, state.Players);
+
+            // 1바퀴째: 각 플레이어에게 첫 번째 카드
+            var firstCards = new Dictionary<int, Card>();
+            foreach (int idx in dealOrder)
             {
-                if (player.Status == PlayerStatus.Active || player.Status == PlayerStatus.AllIn)
-                {
-                    var card1 = deck.Draw();
-                    var card2 = deck.Draw();
-                    player.AddHoleCard(card1);
-                    player.AddHoleCard(card2);
-                    broadcaster.OnHoleCardsDealt(player.Id, card1, card2);
-                }
+                firstCards[idx] = deck.Draw();
+            }
+
+            // 2바퀴째: 각 플레이어에게 두 번째 카드 배분 및 알림
+            foreach (int idx in dealOrder)
+            {
+                var card1 = firstCards[idx];
+                var card2 = deck.Draw();
+                var player = state.Players[idx];
+                player.AddHoleCard(card1);
+                player.AddHoleCard(card2);
+                broadcaster.OnHoleCardsDealt(player.Id, card1, card2);
             }
 
             // === Phase 3 — 베팅 라운드 반복 ===
 
             // PreFlop 베팅
+            bool earlyWin = false;
+            int earlyWinnerSeatIndex = -1;
+
             if (!IsEarlyTermination(state))
             {
-                await _bettingRoundUsecase.RunBettingRound(state, actionProvider, broadcaster);
+                var result = await _bettingRoundUsecase.RunBettingRound(state, actionProvider, broadcaster);
+                if (result.Type == BettingRoundResultType.HandEndedByFold)
+                {
+                    earlyWin = true;
+                    earlyWinnerSeatIndex = result.WinningSeatIndex;
+                }
             }
 
             // Flop
-            if (!IsEarlyTermination(state))
+            if (!earlyWin && !IsEarlyTermination(state))
             {
                 state.Phase = GamePhase.Flop;
+                deck.Draw(); // 번(burn) 카드
                 var flopCards = new List<Card> { /* ... */ }
                 foreach (var card in flopCards)
                 {
@@ -106,31 +126,48 @@ namespace TexasHoldem.Usecase
                 broadcaster.OnCommunityCardsDealt(GamePhase.Flop, flopCards);
 
                 ResetCurrentBetsForNewStreet(state);
-                await _bettingRoundUsecase.RunBettingRound(state, actionProvider, broadcaster);
+                var result = await _bettingRoundUsecase.RunBettingRound(state, actionProvider, broadcaster);
+                if (result.Type == BettingRoundResultType.HandEndedByFold)
+                {
+                    earlyWin = true;
+                    earlyWinnerSeatIndex = result.WinningSeatIndex;
+                }
             }
 
             // Turn
-            if (!IsEarlyTermination(state))
+            if (!earlyWin && !IsEarlyTermination(state))
             {
                 state.Phase = GamePhase.Turn;
+                deck.Draw(); // 번(burn) 카드
                 var turnCard = deck.Draw();
                 state.AddCommunityCard(turnCard);
                 broadcaster.OnCommunityCardsDealt(GamePhase.Turn, new List<Card> { /* ... */ }
 
                 ResetCurrentBetsForNewStreet(state);
-                await _bettingRoundUsecase.RunBettingRound(state, actionProvider, broadcaster);
+                var result = await _bettingRoundUsecase.RunBettingRound(state, actionProvider, broadcaster);
+                if (result.Type == BettingRoundResultType.HandEndedByFold)
+                {
+                    earlyWin = true;
+                    earlyWinnerSeatIndex = result.WinningSeatIndex;
+                }
             }
 
             // River
-            if (!IsEarlyTermination(state))
+            if (!earlyWin && !IsEarlyTermination(state))
             {
                 state.Phase = GamePhase.River;
+                deck.Draw(); // 번(burn) 카드
                 var riverCard = deck.Draw();
                 state.AddCommunityCard(riverCard);
                 broadcaster.OnCommunityCardsDealt(GamePhase.River, new List<Card> { /* ... */ }
 
                 ResetCurrentBetsForNewStreet(state);
-                await _bettingRoundUsecase.RunBettingRound(state, actionProvider, broadcaster);
+                var result = await _bettingRoundUsecase.RunBettingRound(state, actionProvider, broadcaster);
+                if (result.Type == BettingRoundResultType.HandEndedByFold)
+                {
+                    earlyWin = true;
+                    earlyWinnerSeatIndex = result.WinningSeatIndex;
+                }
             }
 
             // === Phase 4 — 쇼다운 / 조기 종료 ===
@@ -152,10 +189,9 @@ namespace TexasHoldem.Usecase
                     {
                         var allCards = new List<Card>(player.HoleCards);
                         allCards.AddRange(state.CommunityCards);
-                        var eval = HandEvaluator.Evaluate(allCards);
 
-                        // 최선의 5장 조합 찾기
                         var bestFive = FindBestFiveCards(allCards);
+                        var eval = HandEvaluator.Evaluate(bestFive);
                         showdownResults.Add((player.Id, eval.Rank, bestFive));
                     }
                 }
@@ -204,6 +240,28 @@ namespace TexasHoldem.Usecase
             repository.Save(state);
         }
 
+        /// <summary>
+        /// 딜러 다음 좌석(SB)부터 시계 방향으로 딜링 순서를 생성한다.
+        /// Active 또는 AllIn 상태인 플레이어만 포함한다.
+        /// </summary>
+        private static List<int> BuildDealOrder(int dealerIndex, List<PlayerData> players) { /* ... */ }
+        {
+            int count = players.Count;
+            var order = new List<int>();
+
+            for (int i = 1; i <= count; i++)
+            {
+                int idx = (dealerIndex + i) % count;
+                var player = players[idx];
+                if (player.Status == PlayerStatus.Active || player.Status == PlayerStatus.AllIn)
+                {
+                    order.Add(idx);
+                }
+            }
+
+            return order;
+        }
+
         private static void PostBlind(PlayerData player, int blindAmount) { /* ... */ }
         {
             if (player.Chips <= blindAmount)
@@ -222,7 +280,6 @@ namespace TexasHoldem.Usecase
 
         private static bool IsEarlyTermination(GameState state) { /* ... */ }
         {
-            // Active+AllIn 플레이어가 1명 이하면 조기 종료 (나머지 모두 폴드/탈락)
             int remainingCount = state.Players.Count(p => /* ... */;
                 p.Status == PlayerStatus.Active || p.Status == PlayerStatus.AllIn);
             return remainingCount <= 1;
