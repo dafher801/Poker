@@ -1,18 +1,111 @@
 ﻿// PotManager.cs
-// 베팅 라운드 종료 후 베팅액을 수집하고, 사이드 팟을 계산하며, 승자에게 팟을 분배한다.
+// 게임 전체 수명 동안 팟 상태를 관리하는 클래스.
 // 사용 방법:
 //   var pm = new PotManager();
-//   pm.CollectBets(state);          — 모든 플레이어의 CurrentBet을 팟에 합산하고 0으로 초기화
-//   pm.CalculateSidePots(state);    — 올인 플레이어가 있을 경우 사이드 팟을 분리
-//   var payouts = pm.DistributePots(pots, evaluations); — 각 팟의 승자에게 금액 분배
+//   pm.CollectBets(roundBets);      — PotCalculator로 팟을 계산하고 기존 팟과 병합
+//   pm.GetPots();                   — 현재 팟 목록 복사본 반환
+//   pm.GetTotalPot();               — 전체 팟 금액 합계 반환
+//   pm.RemovePlayer(playerId);      — 모든 팟에서 특정 플레이어 제거
+//   pm.Reset();                     — 팟 초기화
+// 기존 GameState 기반 메서드(CollectBets(GameState), CalculateSidePots, DistributePots)도 유지.
 
 using System.Collections.Generic;
+using System.Linq;
 using TexasHoldem.Entity;
 
 namespace TexasHoldem.Usecase
 {
     public class PotManager
     {
+        private readonly List<Pot> _currentPots = new List<Pot>();
+        /// <summary>
+        /// PotCalculator를 사용하여 이번 라운드의 팟을 계산하고, 기존 CurrentPots와 병합한다.
+        /// 병합 규칙: EligiblePlayerIds 집합이 동일한 팟끼리 금액을 합산하고,
+        /// 동일 집합이 없으면 새 팟으로 추가한다.
+        /// </summary>
+        public void CollectBets(List<PlayerBetInfo> roundBets)
+        {
+            var roundPots = PotCalculator.CalculatePots(roundBets);
+
+            foreach (var roundPot in roundPots)
+            {
+                bool merged = false;
+                foreach (var existingPot in _currentPots)
+                {
+                    if (AreEligibleSetsEqual(existingPot.EligiblePlayerIds, roundPot.EligiblePlayerIds))
+                    {
+                        existingPot.AddAmount(roundPot.Amount);
+                        merged = true;
+                        break;
+                    }
+                }
+
+                if (!merged)
+                {
+                    _currentPots.Add(new Pot(roundPot.Amount, new List<string>(roundPot.EligiblePlayerIds)));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 현재 팟 목록의 복사본을 반환한다.
+        /// </summary>
+        public List<Pot> GetPots()
+        {
+            var copy = new List<Pot>();
+            foreach (var pot in _currentPots)
+            {
+                copy.Add(new Pot(pot.Amount, new List<string>(pot.EligiblePlayerIds)));
+            }
+            return copy;
+        }
+
+        /// <summary>
+        /// 모든 팟 금액의 합계를 반환한다.
+        /// </summary>
+        public int GetTotalPot()
+        {
+            int total = 0;
+            foreach (var pot in _currentPots)
+            {
+                total += pot.Amount;
+            }
+            return total;
+        }
+
+        /// <summary>
+        /// 새 핸드 시작 시 팟을 초기화한다.
+        /// </summary>
+        public void Reset()
+        {
+            _currentPots.Clear();
+        }
+
+        /// <summary>
+        /// 특정 플레이어를 모든 팟의 EligiblePlayerIds에서 제거한다. (폴드 시 호출용)
+        /// </summary>
+        public void RemovePlayer(string playerId)
+        {
+            foreach (var pot in _currentPots)
+            {
+                pot.RemovePlayer(playerId);
+            }
+        }
+
+        private bool AreEligibleSetsEqual(List<string> a, List<string> b)
+        {
+            if (a.Count != b.Count)
+                return false;
+
+            var setA = new HashSet<string>(a);
+            foreach (var id in b)
+            {
+                if (!setA.Contains(id))
+                    return false;
+            }
+            return true;
+        }
+
         /// <summary>
         /// 모든 플레이어의 CurrentBet을 합산하여 state.Pots에 반영한 뒤
         /// 각 플레이어의 CurrentBet을 0으로 초기화한다.
