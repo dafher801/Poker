@@ -160,6 +160,27 @@ namespace TexasHoldem.Tests.EditMode
         }
 
         // ────────────────────────────────────────────────────────────────
+        // LastRaiseSize가 BigBlind보다 작을 때 BigBlind가 최소 레이즈 증분으로 사용되는지 확인
+        // ────────────────────────────────────────────────────────────────
+
+        [Test]
+        public void MinRaiseIncrement_UseBigBlindWhenLastRaiseSizeIsSmaller()
+        {
+            var players = new List<PlayerData>
+            {
+                CreatePlayer("P1", chips: 800, currentBet: 200, seatIndex: 0),
+                CreatePlayer("P2", chips: 1000, currentBet: 0, seatIndex: 1)
+            };
+            var state = CreateGameState(players); // BB = 100
+            state.LastRaiseSize = 50; // BigBlind(100)보다 작은 값
+
+            var result = _validator.GetLegalActions(state, "P2");
+
+            // 최소 레이즈 총액 = maxBet(200) + max(50, 100) = 200 + 100 = 300
+            Assert.AreEqual(300, result.MinRaiseAmount);
+        }
+
+        // ────────────────────────────────────────────────────────────────
         // 올인 상태 플레이어에게는 빈 액션 목록 반환 확인
         // ────────────────────────────────────────────────────────────────
 

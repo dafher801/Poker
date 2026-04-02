@@ -69,8 +69,11 @@ namespace TexasHoldem.Usecase
             }
 
             // Raise 가능 여부 확인
-            // 최소 레이즈 총액 = 현재 최고 베팅액 + LastRaiseSize
-            int minRaiseTotal = maxBet + state.LastRaiseSize;
+            // 최소 레이즈 총액 = 현재 최고 베팅액 + max(LastRaiseSize, BigBlind)
+            int raiseIncrement = state.LastRaiseSize > state.Blinds.BigBlind
+                ? state.LastRaiseSize
+                : state.Blinds.BigBlind;
+            int minRaiseTotal = maxBet + raiseIncrement;
             int playerTotalChips = player.Chips + player.CurrentBet; // 올인 시 낼 수 있는 최대 총액
 
             if (playerTotalChips >= minRaiseTotal)
