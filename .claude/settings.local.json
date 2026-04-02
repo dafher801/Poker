@@ -13,7 +13,8 @@
       "Bash(dotnet test:*)",
       "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Tests/EditMode/GameRoundTests_DealerFlow.cs\")",
       "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/Usecase/PotManager.cs\")",
-      "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/Director/HandDirector.cs\")"
+      "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/Director/HandDirector.cs\")",
+      "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/Director/AiAutoMatchDirector.cs\")"
     ]
   }
 }
