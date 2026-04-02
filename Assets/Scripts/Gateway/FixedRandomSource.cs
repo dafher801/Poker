@@ -18,6 +18,16 @@ namespace TexasHoldem.Gateway
         private int _sequenceIndex;
 
         /// <summary>
+        /// 무작동 모드. Shuffle 호출 시 리스트를 변경하지 않아 원래 순서를 유지한다.
+        /// </summary>
+        public FixedRandomSource()
+        {
+            _fixedDeck = null;
+            _randomSequence = null;
+            _sequenceIndex = 0;
+        }
+
+        /// <summary>
         /// 고정 덱 모드. Shuffle 호출 시 리스트를 지정된 카드 순서로 재배치한다.
         /// </summary>
         public FixedRandomSource(Card[] fixedDeck)
@@ -58,10 +68,11 @@ namespace TexasHoldem.Gateway
             {
                 ShuffleWithFixedDeck(list);
             }
-            else
+            else if (_randomSequence != null)
             {
                 ShuffleWithFisherYates(list);
             }
+            // 기본 생성자: 아무것도 하지 않는다. 원래 순서를 유지한다.
         }
 
         private void ShuffleWithFixedDeck<T>(IList<T> list)

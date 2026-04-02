@@ -14,6 +14,7 @@ namespace TexasHoldem.Gateway
 {
     public class FixedRandomSource : IRandomSource
     {
+        public FixedRandomSource() { /* ... */ }
         public FixedRandomSource(Card[] fixedDeck) { /* ... */ }
         public FixedRandomSource(int[] randomSequence) { /* ... */ }
         public int Next(int minInclusive, int maxExclusive) { /* ... */ }
