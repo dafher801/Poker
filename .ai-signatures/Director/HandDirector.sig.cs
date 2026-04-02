@@ -84,7 +84,7 @@ namespace TexasHoldem.Director
 
             // HandStartedEvent 발행
             long timestamp = DateTime.UtcNow.Ticks;
-            _broadcaster.Broadcast(new HandStartedEvent(timestamp, _handId, dealerIndex, participantIndices));
+            _broadcaster.Publish(new HandStartedEvent(timestamp, _handId, dealerIndex, participantIndices));
 
             // (3) 블라인드 징수
             await PostBlindsAsync(sbIndex, bbIndex, ct);
@@ -151,7 +151,7 @@ namespace TexasHoldem.Director
             if (sbPlayer.Chips == 0)
                 sbPlayer.Status = PlayerStatus.AllIn;
 
-            _broadcaster.Broadcast(new BlindPostedEvent(timestamp, _handId, sbIndex, sbActual, BlindType.Small));
+            _broadcaster.Publish(new BlindPostedEvent(timestamp, _handId, sbIndex, sbActual, BlindType.Small));
 
             // BB 징수
             var bbPlayer = _state.Players[bbIndex];
@@ -161,7 +161,7 @@ namespace TexasHoldem.Director
             if (bbPlayer.Chips == 0)
                 bbPlayer.Status = PlayerStatus.AllIn;
 
-            _broadcaster.Broadcast(new BlindPostedEvent(timestamp, _handId, bbIndex, bbActual, BlindType.Big));
+            _broadcaster.Publish(new BlindPostedEvent(timestamp, _handId, bbIndex, bbActual, BlindType.Big));
 
             // 게임 상태 갱신
             _state.LastRaiseSize = bbActual;
@@ -195,7 +195,7 @@ namespace TexasHoldem.Director
                 _state.Players[seatIndex].AddHoleCard(card1);
                 _state.Players[seatIndex].AddHoleCard(card2);
 
-                _broadcaster.Broadcast(new CardsDealtEvent(
+                _broadcaster.Publish(new CardsDealtEvent(
                     timestamp, _handId, CardDealType.HoleCard,
                     new List<Card> { card1, card2 }, seatIndex));
             }
@@ -223,7 +223,7 @@ namespace TexasHoldem.Director
 
             // PhaseChangedEvent 발행
             long timestamp = DateTime.UtcNow.Ticks;
-            _broadcaster.Broadcast(new PhaseChangedEvent(timestamp, _handId, GetPreviousRoundPhase(roundPhase), roundPhase));
+            _broadcaster.Publish(new PhaseChangedEvent(timestamp, _handId, GetPreviousRoundPhase(roundPhase), roundPhase));
 
             _state.Phase = gamePhase;
 
@@ -267,7 +267,7 @@ namespace TexasHoldem.Director
                 dealtCards.Add(card);
             }
 
-            _broadcaster.Broadcast(new CardsDealtEvent(timestamp, _handId, dealType, dealtCards, -1));
+            _broadcaster.Publish(new CardsDealtEvent(timestamp, _handId, dealType, dealtCards, -1));
         }
 
         private async Task RunBettingRoundAsync(GamePhase phase, CancellationToken ct) { /* ... */ }
@@ -279,7 +279,7 @@ namespace TexasHoldem.Director
             if (phase == GamePhase.PreFlop)
             {
                 long timestamp = DateTime.UtcNow.Ticks;
-                _broadcaster.Broadcast(new PhaseChangedEvent(timestamp, _handId, RoundPhase.None, RoundPhase.PreFlop));
+                _broadcaster.Publish(new PhaseChangedEvent(timestamp, _handId, RoundPhase.None, RoundPhase.PreFlop));
                 _state.Phase = GamePhase.PreFlop;
             }
 
@@ -334,7 +334,7 @@ namespace TexasHoldem.Director
 
                     // TurnStartedEvent 발행
                     long turnTimestamp = DateTime.UtcNow.Ticks;
-                    _broadcaster.Broadcast(new TurnStartedEvent(
+                    _broadcaster.Publish(new TurnStartedEvent(
                         turnTimestamp, _handId, seatIndex,
                         legalActions.AvailableActions,
                         legalActions.MinRaiseAmount,
@@ -362,7 +362,7 @@ namespace TexasHoldem.Director
 
                     // PlayerActedEvent 발행
                     long actedTimestamp = DateTime.UtcNow.Ticks;
-                    _broadcaster.Broadcast(new PlayerActedEvent(
+                    _broadcaster.Publish(new PlayerActedEvent(
                         actedTimestamp, _handId, seatIndex, action.Type, action.Amount));
 
                     hasActed[seatIndex] = true;
@@ -486,7 +486,7 @@ namespace TexasHoldem.Director
             }
 
             long timestamp = DateTime.UtcNow.Ticks;
-            _broadcaster.Broadcast(new PotUpdatedEvent(timestamp, _handId, mainPot, sidePots));
+            _broadcaster.Publish(new PotUpdatedEvent(timestamp, _handId, mainPot, sidePots));
         }
 
         private async Task RunShowdownAsync(CancellationToken ct) { /* ... */ }
@@ -532,7 +532,7 @@ namespace TexasHoldem.Director
             // ShowdownResultEvent 발행
             long timestamp = DateTime.UtcNow.Ticks;
             var entries = BuildShowdownEntries(activeSeatIndices, potResults);
-            _broadcaster.Broadcast(new ShowdownResultEvent(timestamp, _handId, entries));
+            _broadcaster.Publish(new ShowdownResultEvent(timestamp, _handId, entries));
 
             // 칩 분배
             ChipDistributionUsecase.DistributeChips(potResults, _ledger);
@@ -543,7 +543,7 @@ namespace TexasHoldem.Director
             // HandEndedEvent 발행
             var awards = BuildPotAwards(potResults);
             timestamp = DateTime.UtcNow.Ticks;
-            _broadcaster.Broadcast(new HandEndedEvent(timestamp, _handId, awards, HandEndReason.Showdown));
+            _broadcaster.Publish(new HandEndedEvent(timestamp, _handId, awards, HandEndReason.Showdown));
 
             _handEnded = true;
         }
@@ -570,7 +570,7 @@ namespace TexasHoldem.Director
             };
 
             long timestamp = DateTime.UtcNow.Ticks;
-            _broadcaster.Broadcast(new HandEndedEvent(timestamp, _handId, awards, HandEndReason.LastManStanding));
+            _broadcaster.Publish(new HandEndedEvent(timestamp, _handId, awards, HandEndReason.LastManStanding));
 
             _handEnded = true;
 
