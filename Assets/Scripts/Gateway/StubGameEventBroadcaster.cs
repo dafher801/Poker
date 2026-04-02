@@ -1,76 +1,63 @@
 ﻿// StubGameEventBroadcaster.cs
 // IGameEventBroadcaster의 테스트용 구현체.
-// 각 이벤트 메서드 호출 시 이벤트 이름과 파라미터를 내부 로그에 기록한다.
-// 테스트 코드에서 GetLog()로 기록된 이벤트를 조회하여 브로드캐스터 호출 여부를 검증한다.
-// 사용법: StubGameEventBroadcaster stub = new(); ... stub.GetLog() 로 이벤트 목록 확인.
+// Broadcast 호출 시 수신한 모든 GameEventBase를 내부 리스트에 순서대로 기록한다.
+// 등록된 리스너에게도 이벤트를 전달한다.
+// 테스트 코드에서 GetEvents()로 기록된 이벤트를 조회하여 브로드캐스터 호출 여부를 검증한다.
+// 사용법: StubGameEventBroadcaster stub = new(); ... stub.GetEvents() 로 이벤트 목록 확인.
 
 using System.Collections.Generic;
+using System.Linq;
 using TexasHoldem.Entity;
 
 namespace TexasHoldem.Gateway
 {
     public class StubGameEventBroadcaster : IGameEventBroadcaster
     {
-        private readonly List<(string EventName, object[] Args)> _log = new();
+        private readonly List<GameEventBase> _events = new();
+        private readonly List<IGameEventListener> _listeners = new();
 
-        public void OnRoundStarted(int roundNumber, int dealerIndex)
+        public void Broadcast(GameEventBase gameEvent)
         {
-            _log.Add((nameof(OnRoundStarted), new object[] { roundNumber, dealerIndex }));
+            _events.Add(gameEvent);
+            foreach (var listener in _listeners)
+            {
+                listener.OnGameEvent(gameEvent);
+            }
         }
 
-        public void OnBlindsPosted(string sbPlayerId, int sbAmount, string bbPlayerId, int bbAmount)
+        public void RegisterListener(IGameEventListener listener)
         {
-            _log.Add((nameof(OnBlindsPosted), new object[] { sbPlayerId, sbAmount, bbPlayerId, bbAmount }));
+            if (!_listeners.Contains(listener))
+            {
+                _listeners.Add(listener);
+            }
         }
 
-        public void OnHoleCardsDealt(string playerId, Card card1, Card card2)
+        public void UnregisterListener(IGameEventListener listener)
         {
-            _log.Add((nameof(OnHoleCardsDealt), new object[] { playerId, card1, card2 }));
+            _listeners.Remove(listener);
         }
 
-        public void OnCommunityCardsDealt(GamePhase phase, IReadOnlyList<Card> newCards)
+        public IReadOnlyList<GameEventBase> GetEvents()
         {
-            _log.Add((nameof(OnCommunityCardsDealt), new object[] { phase, newCards }));
+            return _events.AsReadOnly();
         }
 
-        public void OnPlayerActed(string playerId, PlayerAction action)
+        public List<T> GetEvents<T>() where T : GameEventBase
         {
-            _log.Add((nameof(OnPlayerActed), new object[] { playerId, action }));
+            return _events.OfType<T>().ToList();
         }
 
-        public void OnBettingRoundStarted(GamePhase phase)
+        public GameEventBase GetEventAt(int index)
         {
-            _log.Add((nameof(OnBettingRoundStarted), new object[] { phase }));
+            return _events[index];
         }
 
-        public void OnBettingRoundEnded(GamePhase phase)
-        {
-            _log.Add((nameof(OnBettingRoundEnded), new object[] { phase }));
-        }
+        public int EventCount => _events.Count;
 
-        public void OnPotUpdated(IReadOnlyList<Pot> pots)
+        public void Clear()
         {
-            _log.Add((nameof(OnPotUpdated), new object[] { pots }));
-        }
-
-        public void OnShowdown(IReadOnlyList<(string PlayerId, HandRank Rank, IReadOnlyList<Card> BestFive)> results)
-        {
-            _log.Add((nameof(OnShowdown), new object[] { results }));
-        }
-
-        public void OnHandEndedByFold(int winningSeatIndex, int potAmount)
-        {
-            _log.Add((nameof(OnHandEndedByFold), new object[] { winningSeatIndex, potAmount }));
-        }
-
-        public void OnRoundEnded(IReadOnlyList<(string PlayerId, int ChipDelta)> settlements)
-        {
-            _log.Add((nameof(OnRoundEnded), new object[] { settlements }));
-        }
-
-        public IReadOnlyList<(string EventName, object[] Args)> GetLog()
-        {
-            return _log.AsReadOnly();
+            _events.Clear();
         }
     }
 }
