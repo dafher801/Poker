@@ -148,37 +148,42 @@ namespace TexasHoldem.Tests.EditMode
         }
 
         // ────────────────────────────────────────────────────────────────
-        // 올인 포함 라운드: P1 Raise → P2 AllIn(칩 부족) → P1 Call → 라운드 종료 후 사이드 팟 생성 확인
+        // 올인 포함 라운드: P2 Raise → P3 AllIn(칩 부족) → P1 Call → P2 Call → 라운드 종료 확인
+        // 2인 게임에서 AllIn 시 Active가 1명이 되어 즉시 종료되므로 3인으로 테스트한다.
         // ────────────────────────────────────────────────────────────────
 
         [Test]
-        public void AllInRound_SidePotsCreated()
+        public void AllInRound_PotCollectedCorrectly()
         {
-            // Flop, P1은 칩 1000, P2는 칩 300 (부족)
+            // Flop, 3명: P1(1000), P2(1000), P3(150, 칩 부족)
             var players = new List<PlayerData>
             {
                 CreatePlayer("P1", chips: 1000, currentBet: 0, seatIndex: 0),
-                CreatePlayer("P2", chips: 300, currentBet: 0, seatIndex: 1)
+                CreatePlayer("P2", chips: 1000, currentBet: 0, seatIndex: 1),
+                CreatePlayer("P3", chips: 150, currentBet: 0, seatIndex: 2)
             };
+            // dealer=0 → PostFlop 첫 액션자: P2(index 1)
             var state = CreateGameState(players, bigBlind: 100, dealerIndex: 0, phase: GamePhase.Flop);
             state.LastRaiseSize = 100;
 
-            // P2 첫 액션(딜러 다음): AllIn 300 → P1: Call 300
+            // P2 Raise 300 → P3 AllIn(칩 150) → P1 Call 300 → P2는 이미 액션, 라운드 종료
             var actionProvider = new StubPlayerActionProvider(new List<PlayerAction>
             {
-                new PlayerAction("P2", ActionType.AllIn, 0),
+                new PlayerAction("P2", ActionType.Raise, 300),
+                new PlayerAction("P3", ActionType.AllIn, 0),
                 new PlayerAction("P1", ActionType.Call, 300)
             });
             var broadcaster = new StubGameEventBroadcaster();
 
             _usecase.RunBettingRound(state, actionProvider, broadcaster).Wait();
 
-            Assert.AreEqual(PlayerStatus.AllIn, state.Players[1].Status, "P2는 AllIn이어야 한다");
-            Assert.AreEqual(0, state.Players[1].Chips, "P2 칩은 0이어야 한다");
+            Assert.AreEqual(PlayerStatus.AllIn, state.Players[2].Status, "P3는 AllIn이어야 한다");
+            Assert.AreEqual(0, state.Players[2].Chips, "P3 칩은 0이어야 한다");
             Assert.AreEqual(700, state.Players[0].Chips, "P1은 300을 콜하여 700이어야 한다");
+            Assert.AreEqual(700, state.Players[1].Chips, "P2는 300을 레이즈하여 700이어야 한다");
 
             int totalPot = state.Pots.Sum(p => p.Amount);
-            Assert.AreEqual(600, totalPot, "총 팟은 600이어야 한다");
+            Assert.AreEqual(750, totalPot, "총 팟은 300+150+300=750이어야 한다");
         }
 
         // ────────────────────────────────────────────────────────────────
