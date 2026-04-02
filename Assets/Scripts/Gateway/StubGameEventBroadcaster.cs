@@ -13,39 +13,24 @@ namespace TexasHoldem.Gateway
     {
         private readonly List<(string EventName, object[] Args)> _log = new();
 
-        public void OnPhaseChanged(GamePhase phase)
+        public void OnPlayerActed(string playerId, PlayerAction action)
         {
-            _log.Add((nameof(OnPhaseChanged), new object[] { phase }));
+            _log.Add((nameof(OnPlayerActed), new object[] { playerId, action }));
         }
 
-        public void OnPlayerActed(PlayerAction action)
+        public void OnBettingRoundStarted(GamePhase phase)
         {
-            _log.Add((nameof(OnPlayerActed), new object[] { action }));
+            _log.Add((nameof(OnBettingRoundStarted), new object[] { phase }));
         }
 
-        public void OnCardsDealt(string playerId, List<Card> cards)
+        public void OnBettingRoundEnded(GamePhase phase)
         {
-            _log.Add((nameof(OnCardsDealt), new object[] { playerId, cards }));
-        }
-
-        public void OnCommunityCardsRevealed(List<Card> cards)
-        {
-            _log.Add((nameof(OnCommunityCardsRevealed), new object[] { cards }));
+            _log.Add((nameof(OnBettingRoundEnded), new object[] { phase }));
         }
 
         public void OnPotUpdated(List<Pot> pots)
         {
             _log.Add((nameof(OnPotUpdated), new object[] { pots }));
-        }
-
-        public void OnShowdown(List<PlayerData> players)
-        {
-            _log.Add((nameof(OnShowdown), new object[] { players }));
-        }
-
-        public void OnHandResult(List<string> winnerIds, List<Pot> pots)
-        {
-            _log.Add((nameof(OnHandResult), new object[] { winnerIds, pots }));
         }
 
         public IReadOnlyList<(string EventName, object[] Args)> GetLog()
