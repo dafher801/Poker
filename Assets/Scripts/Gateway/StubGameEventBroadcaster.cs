@@ -13,6 +13,26 @@ namespace TexasHoldem.Gateway
     {
         private readonly List<(string EventName, object[] Args)> _log = new();
 
+        public void OnRoundStarted(int roundNumber, int dealerIndex)
+        {
+            _log.Add((nameof(OnRoundStarted), new object[] { roundNumber, dealerIndex }));
+        }
+
+        public void OnBlindsPosted(string sbPlayerId, int sbAmount, string bbPlayerId, int bbAmount)
+        {
+            _log.Add((nameof(OnBlindsPosted), new object[] { sbPlayerId, sbAmount, bbPlayerId, bbAmount }));
+        }
+
+        public void OnHoleCardsDealt(string playerId, Card card1, Card card2)
+        {
+            _log.Add((nameof(OnHoleCardsDealt), new object[] { playerId, card1, card2 }));
+        }
+
+        public void OnCommunityCardsDealt(GamePhase phase, IReadOnlyList<Card> newCards)
+        {
+            _log.Add((nameof(OnCommunityCardsDealt), new object[] { phase, newCards }));
+        }
+
         public void OnPlayerActed(string playerId, PlayerAction action)
         {
             _log.Add((nameof(OnPlayerActed), new object[] { playerId, action }));
@@ -28,9 +48,19 @@ namespace TexasHoldem.Gateway
             _log.Add((nameof(OnBettingRoundEnded), new object[] { phase }));
         }
 
-        public void OnPotUpdated(List<Pot> pots)
+        public void OnPotUpdated(IReadOnlyList<Pot> pots)
         {
             _log.Add((nameof(OnPotUpdated), new object[] { pots }));
+        }
+
+        public void OnShowdown(IReadOnlyList<(string PlayerId, HandRank Rank, IReadOnlyList<Card> BestFive)> results)
+        {
+            _log.Add((nameof(OnShowdown), new object[] { results }));
+        }
+
+        public void OnRoundEnded(IReadOnlyList<(string PlayerId, int ChipDelta)> settlements)
+        {
+            _log.Add((nameof(OnRoundEnded), new object[] { settlements }));
         }
 
         public IReadOnlyList<(string EventName, object[] Args)> GetLog()
