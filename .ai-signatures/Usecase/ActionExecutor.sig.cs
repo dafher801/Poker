@@ -3,7 +3,7 @@
 // 플레이어 액션(Fold, Check, Call, Raise, AllIn)을 GameState에 적용한다.
 // 사용 방법: ActionExecutor.Execute(state, action)을 호출하면
 // 해당 플레이어의 Chips, CurrentBet, Status와 GameState의 LastRaiseSize가 갱신된다.
-// Pot 수집은 PotManager가 베팅 라운드 종료 시 담당한다.
+// 각 액션 실행 시 투입된 칩은 즉시 메인 팟(Pots[0])에 누적된다.
 // ActionValidator로 합법성이 검증된 액션만 전달되어야 한다.
 
 using System;

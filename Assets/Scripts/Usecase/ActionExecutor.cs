@@ -6,6 +6,7 @@
 // ActionValidator로 합법성이 검증된 액션만 전달되어야 한다.
 
 using System;
+using System.Collections.Generic;
 using TexasHoldem.Entity;
 
 namespace TexasHoldem.Usecase
@@ -72,6 +73,7 @@ namespace TexasHoldem.Usecase
 
             player.Chips -= callAmount;
             player.CurrentBet += callAmount;
+            AddToPot(state, callAmount);
         }
 
         private void ExecuteRaise(GameState state, PlayerData player, int raiseTotal)
@@ -83,6 +85,7 @@ namespace TexasHoldem.Usecase
             player.Chips -= additionalChips;
             player.CurrentBet = raiseTotal;
             state.LastRaiseSize = raiseTotal - highestBet;
+            AddToPot(state, additionalChips);
         }
 
         private void ExecuteAllIn(GameState state, PlayerData player)
@@ -105,6 +108,15 @@ namespace TexasHoldem.Usecase
             player.CurrentBet += allInAmount;
             player.Chips = 0;
             player.Status = PlayerStatus.AllIn;
+            AddToPot(state, allInAmount);
+        }
+
+        private void AddToPot(GameState state, int amount)
+        {
+            if (state.Pots.Count == 0)
+                state.Pots.Add(new Pot());
+
+            state.Pots[0].AddAmount(amount);
         }
 
         private int GetHighestBet(GameState state)
