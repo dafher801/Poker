@@ -1,7 +1,7 @@
 ﻿// GameState.cs
 // 텍사스 홀덤 게임 한 핸드의 전체 상태를 담는 Entity.
 // Players(2~10명), CommunityCards(최대 5장), Pots, Phase, DealerIndex,
-// Blinds, CurrentPlayerIndex를 관리하며 유효성 위반 시 예외를 던진다.
+// Blinds, CurrentPlayerIndex, LastRaiseSize를 관리하며 유효성 위반 시 예외를 던진다.
 // DeepClone()으로 현재 상태의 독립된 복사본을 생성할 수 있다.
 
 using System;
@@ -28,6 +28,9 @@ namespace TexasHoldem.Entity
                 _dealerIndex = value;
             }
         }
+
+        // 직전 레이즈 크기(레이즈 총액 - 이전 최고 베팅액). 최소 재레이즈 계산에 사용한다.
+        public int LastRaiseSize { get; set; }
 
         private int _currentPlayerIndex;
         public int CurrentPlayerIndex
@@ -61,6 +64,7 @@ namespace TexasHoldem.Entity
             Phase = GamePhase.PreFlop;
             _dealerIndex = dealerIndex;
             _currentPlayerIndex = currentPlayerIndex;
+            LastRaiseSize = blinds.BigBlind;
         }
 
         // 복사 생성자 — DeepClone 내부에서 사용
@@ -70,6 +74,8 @@ namespace TexasHoldem.Entity
             Phase = source.Phase;
             _dealerIndex = source._dealerIndex;
             _currentPlayerIndex = source._currentPlayerIndex;
+
+            LastRaiseSize = source.LastRaiseSize;
 
             Players = new List<PlayerData>(source.Players.Count);
             foreach (var p in source.Players)
