@@ -1,11 +1,11 @@
 ﻿// ActionExecutor.cs
 // 플레이어 액션(Fold, Check, Call, Raise, AllIn)을 GameState에 적용한다.
 // 사용 방법: ActionExecutor.Execute(state, action)을 호출하면
-// 해당 플레이어의 Chips, CurrentBet, Status와 GameState의 Pot, LastRaiseSize가 갱신된다.
+// 해당 플레이어의 Chips, CurrentBet, Status와 GameState의 LastRaiseSize가 갱신된다.
+// Pot 수집은 PotManager가 베팅 라운드 종료 시 담당한다.
 // ActionValidator로 합법성이 검증된 액션만 전달되어야 한다.
 
 using System;
-using System.Linq;
 using TexasHoldem.Entity;
 
 namespace TexasHoldem.Usecase
@@ -72,7 +72,6 @@ namespace TexasHoldem.Usecase
 
             player.Chips -= callAmount;
             player.CurrentBet += callAmount;
-            AddToPot(state, callAmount);
         }
 
         private void ExecuteRaise(GameState state, PlayerData player, int raiseTotal)
@@ -84,7 +83,6 @@ namespace TexasHoldem.Usecase
             player.Chips -= additionalChips;
             player.CurrentBet = raiseTotal;
             state.LastRaiseSize = raiseTotal - highestBet;
-            AddToPot(state, additionalChips);
         }
 
         private void ExecuteAllIn(GameState state, PlayerData player)
@@ -107,7 +105,6 @@ namespace TexasHoldem.Usecase
             player.CurrentBet += allInAmount;
             player.Chips = 0;
             player.Status = PlayerStatus.AllIn;
-            AddToPot(state, allInAmount);
         }
 
         private int GetHighestBet(GameState state)
@@ -124,21 +121,5 @@ namespace TexasHoldem.Usecase
             return maxBet;
         }
 
-        private void AddToPot(GameState state, int amount)
-        {
-            if (amount <= 0)
-                return;
-
-            if (state.Pots.Count == 0)
-            {
-                state.Pots.Add(new Pot(amount, state.Players
-                    .FindAll(p => p.Status != PlayerStatus.Folded && p.Status != PlayerStatus.Eliminated)
-                    .ConvertAll(p => p.Id)));
-            }
-            else
-            {
-                state.Pots[0].AddAmount(amount);
-            }
-        }
     }
 }
