@@ -9,15 +9,45 @@
 // 쇼다운 시 HandEvaluator로 각 플레이어의 핸드를 평가하고 PotManager.DistributePots로 분배한다.
 
 using System.Collections.Generic;
+using System.Linq;
 using TexasHoldem.Entity;
 
 namespace TexasHoldem.Usecase
 {
     public class WinnerResolver
     {
-        // 현재 GameState를 기반으로 각 팟의 승자와 배분 금액을 결정하여 반환한다.
-        // Active/AllIn 플레이어가 1명이면 조기 종료(전체 팟 수여),
-        // 2명 이상이면 쇼다운 판정(HandEvaluator + PotManager.DistributePots).
+        /// <summary>
+        /// 현재 GameState를 기반으로 각 팟의 승자와 배분 금액을 결정하여 반환한다.
+        /// Active/AllIn 플레이어가 1명이면 조기 종료, 2명 이상이면 쇼다운 판정을 수행한다.
+        /// </summary>
         public List<(string PlayerId, int Amount)> Resolve(GameState state) { /* ... */ }
+        {
+            var activePlayers = state.Players
+                .Where(p => /* ... */;
+                .ToList();
+
+            // 조기 종료: Active/AllIn 플레이어가 1명뿐이면 전체 팟을 수여
+            if (activePlayers.Count == 1)
+            {
+                int totalPot = state.Pots.Sum(p => /* ... */;
+                return new List<(string PlayerId, int Amount)>
+                {
+                    (activePlayers[0].Id, totalPot)
+                };
+            }
+
+            // 쇼다운: 각 Active/AllIn 플레이어의 핸드를 평가
+            var evaluations = new Dictionary<string, HandEvaluation>();
+            foreach (var player in activePlayers)
+            {
+                var allCards = new List<Card>(state.CommunityCards);
+                allCards.AddRange(player.HoleCards);
+                evaluations[player.Id] = HandEvaluator.Evaluate(allCards);
+            }
+
+            // PotManager를 사용하여 각 팟별 승자에게 분배
+            var potManager = new PotManager();
+            return potManager.DistributePots(state.Pots, evaluations);
+        }
     }
 }

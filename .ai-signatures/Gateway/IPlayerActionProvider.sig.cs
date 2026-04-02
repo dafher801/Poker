@@ -1,4 +1,4 @@
-// Source: Assets/Scripts/Gateway/IPlayerActionProvider.cs
+﻿// Source: Assets/Scripts/Gateway/IPlayerActionProvider.cs
 // IPlayerActionProvider.cs
 // 플레이어 액션을 비동기로 요청·수신하는 게이트웨이 인터페이스.
 // Usecase 계층이 특정 시트의 플레이어에게 합법 액션 목록과 금액 범위를 전달하고,

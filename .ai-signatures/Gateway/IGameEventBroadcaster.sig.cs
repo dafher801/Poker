@@ -1,4 +1,4 @@
-// Source: Assets/Scripts/Gateway/IGameEventBroadcaster.cs
+﻿// Source: Assets/Scripts/Gateway/IGameEventBroadcaster.cs
 // IGameEventBroadcaster.cs
 // 게임 라운드 진행 중 발생하는 이벤트를 외부(View, 네트워크 등)에 전파하기 위한 인터페이스.
 // 라운드 시작/종료, 블라인드, 딜링, 베팅, 팟 변경, 쇼다운 이벤트를 구독자에게 전달한다.
