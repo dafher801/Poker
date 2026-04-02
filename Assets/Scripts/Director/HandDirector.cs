@@ -374,12 +374,26 @@ namespace TexasHoldem.Director
                         return;
                     }
 
-                    // 쇼다운 스킵 체크
+                    // 쇼다운 스킵 체크 — 라운드 중에는 Active 플레이어가 0명일 때만 즉시 스킵
+                    // (Active가 남아 있으면 해당 플레이어의 액션을 먼저 받아야 함;
+                    //  라운드 종료 후 다음 페이즈 시작 시 check #1에서 activeCount<=1 케이스를 처리)
                     if (_roundEndEvaluator.ShouldSkipToShowdown(_state.Players))
                     {
-                        CollectBetsIntoPot();
-                        await _stateMachine.SkipToShowdown();
-                        return;
+                        bool anyActiveRemaining = false;
+                        for (int j = 0; j < _state.Players.Count; j++)
+                        {
+                            if (_state.Players[j].Status == PlayerStatus.Active)
+                            {
+                                anyActiveRemaining = true;
+                                break;
+                            }
+                        }
+                        if (!anyActiveRemaining)
+                        {
+                            CollectBetsIntoPot();
+                            await _stateMachine.SkipToShowdown();
+                            return;
+                        }
                     }
 
                     // 최고 베팅 갱신

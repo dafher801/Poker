@@ -406,11 +406,22 @@ namespace TexasHoldem.Tests.EditMode
             // seat0: AllIn(100). 이미 currentBet=0이므로 amount=100
             // seat1: Call — 현재 최고 베팅=100, seat1 currentBet=5, 필요한 콜=95
             // seat2: Call — 현재 최고 베팅=100, seat2 currentBet=10, 필요한 콜=90
+            // seat0 올인이지만 seat1/seat2는 Active → Flop/Turn/River 진행 필요
             var scripts = new Dictionary<(int seatIndex, int actionSequence), PlayerAction>
             {
+                // PreFlop
                 { (0, 0), new PlayerAction("0", ActionType.AllIn, 100) },
                 { (1, 0), new PlayerAction("1", ActionType.Call, 95) },
                 { (2, 0), new PlayerAction("2", ActionType.Call, 90) },
+                // Flop
+                { (1, 1), new PlayerAction("1", ActionType.Check, 0) },
+                { (2, 1), new PlayerAction("2", ActionType.Check, 0) },
+                // Turn
+                { (1, 2), new PlayerAction("1", ActionType.Check, 0) },
+                { (2, 2), new PlayerAction("2", ActionType.Check, 0) },
+                // River
+                { (1, 3), new PlayerAction("1", ActionType.Check, 0) },
+                { (2, 3), new PlayerAction("2", ActionType.Check, 0) },
             };
             var actionProvider = new MockPlayerActionProvider(scripts);
 
@@ -419,7 +430,7 @@ namespace TexasHoldem.Tests.EditMode
             var task = director.RunHandAsync(state, "hand-3", CancellationToken.None);
             task.Wait();
 
-            // ShouldSkipToShowdown 발동 → 쇼다운으로 직행
+            // seat1/seat2가 Active이므로 Flop/Turn/River를 거쳐 정상 쇼다운
             var showdownEvents = broadcaster.GetEvents<ShowdownResultEvent>();
             Assert.AreEqual(1, showdownEvents.Count, "쇼다운이 발생해야 한다.");
 
