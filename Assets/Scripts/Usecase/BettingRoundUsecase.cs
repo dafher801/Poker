@@ -6,6 +6,7 @@
 // 팟 수집·사이드팟 계산을 순서대로 수행한다.
 
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using TexasHoldem.Entity;
 using TexasHoldem.Gateway;
@@ -67,7 +68,13 @@ namespace TexasHoldem.Usecase
 
                 // 합법 액션 계산 및 플레이어 액션 수신
                 LegalActionSet legalActions = _actionValidator.GetLegalActions(state, player.Id);
-                PlayerAction action = await actionProvider.GetAction(player.Id, legalActions);
+                PlayerAction action = await actionProvider.RequestActionAsync(
+                    currentIndex,
+                    legalActions.AvailableActions.AsReadOnly(),
+                    legalActions.MinRaiseAmount,
+                    legalActions.MaxRaiseAmount,
+                    legalActions.CallAmount,
+                    CancellationToken.None);
 
                 // 액션을 GameState에 적용
                 ApplyAction(state, player, action);

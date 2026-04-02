@@ -98,26 +98,26 @@ namespace TexasHoldem.Tests.EditMode
         // ────────────────────────────────────────────────────────────────
 
         [Test]
-        public void StubPlayerActionProvider_GetAction_ReturnsEnqueuedActionsInOrder()
+        public void StubPlayerActionProvider_RequestActionAsync_ReturnsEnqueuedActionsInOrder()
         {
             var action1 = new PlayerAction("p1", ActionType.Call, 20);
             var action2 = new PlayerAction("p1", ActionType.Fold, 0);
             var provider = new StubPlayerActionProvider(new[] { action1, action2 });
 
-            var result1 = provider.GetAction("p1", default(LegalActionSet)).Result;
-            var result2 = provider.GetAction("p1", default(LegalActionSet)).Result;
+            var result1 = provider.RequestActionAsync(0, new List<ActionType>(), 0, 0, 0, System.Threading.CancellationToken.None).Result;
+            var result2 = provider.RequestActionAsync(0, new List<ActionType>(), 0, 0, 0, System.Threading.CancellationToken.None).Result;
 
             Assert.AreSame(action1, result1);
             Assert.AreSame(action2, result2);
         }
 
         [Test]
-        public void StubPlayerActionProvider_GetActionOnEmptyQueue_ThrowsInvalidOperationException()
+        public void StubPlayerActionProvider_RequestActionAsyncOnEmptyQueue_ThrowsInvalidOperationException()
         {
             var provider = new StubPlayerActionProvider();
 
             Assert.Throws<InvalidOperationException>(() =>
-                provider.GetAction("p1", default(LegalActionSet)));
+                provider.RequestActionAsync(0, new List<ActionType>(), 0, 0, 0, System.Threading.CancellationToken.None).GetAwaiter().GetResult());
         }
 
         [Test]
@@ -127,7 +127,7 @@ namespace TexasHoldem.Tests.EditMode
             var action = new PlayerAction("p1", ActionType.Check, 0);
             provider.EnqueueAction(action);
 
-            var result = provider.GetAction("p1", default(LegalActionSet)).Result;
+            var result = provider.RequestActionAsync(0, new List<ActionType>(), 0, 0, 0, System.Threading.CancellationToken.None).Result;
 
             Assert.AreSame(action, result);
         }

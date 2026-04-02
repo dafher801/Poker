@@ -1,4 +1,4 @@
-﻿// Source: Assets/Scripts/Usecase/BettingRoundUsecase.cs
+// Source: Assets/Scripts/Usecase/BettingRoundUsecase.cs
 // BettingRoundUsecase.cs
 // 단일 베팅 라운드의 진행을 제어하는 Usecase.
 // 사용 방법: var usecase = new BettingRoundUsecase(actionValidator, potManager);

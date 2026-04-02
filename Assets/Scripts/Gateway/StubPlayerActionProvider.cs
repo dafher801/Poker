@@ -1,12 +1,13 @@
 ﻿// StubPlayerActionProvider.cs
 // 통합 테스트 전용 IPlayerActionProvider 구현체.
 // 두 가지 모드를 지원한다:
-// 1. PlayerId별 큐 모드: Dictionary<string, Queue<PlayerAction>>을 받아 PlayerId별로 액션을 관리.
+// 1. SeatIndex별 큐 모드: Dictionary<int, Queue<PlayerAction>>을 받아 시트별로 액션을 관리.
 // 2. 단일 큐 모드: IEnumerable<PlayerAction>을 받아 호출 순서대로 반환.
-// GetAction 호출 시 큐가 비었거나 PlayerId가 없으면 InvalidOperationException을 던진다.
+// RequestActionAsync 호출 시 큐가 비었거나 SeatIndex가 없으면 InvalidOperationException을 던진다.
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using TexasHoldem.Entity;
 
@@ -14,20 +15,20 @@ namespace TexasHoldem.Gateway
 {
     public class StubPlayerActionProvider : IPlayerActionProvider
     {
-        private readonly Dictionary<string, Queue<PlayerAction>> _playerQueues;
+        private readonly Dictionary<int, Queue<PlayerAction>> _seatQueues;
         private readonly Queue<PlayerAction> _sharedQueue;
-        private readonly bool _usePlayerQueues;
+        private readonly bool _useSeatQueues;
 
-        public StubPlayerActionProvider(Dictionary<string, Queue<PlayerAction>> actionsByPlayer)
+        public StubPlayerActionProvider(Dictionary<int, Queue<PlayerAction>> actionsBySeat)
         {
-            _playerQueues = actionsByPlayer ?? throw new ArgumentNullException(nameof(actionsByPlayer));
-            _usePlayerQueues = true;
+            _seatQueues = actionsBySeat ?? throw new ArgumentNullException(nameof(actionsBySeat));
+            _useSeatQueues = true;
         }
 
         public StubPlayerActionProvider(IEnumerable<PlayerAction> actions = null)
         {
             _sharedQueue = new Queue<PlayerAction>();
-            _usePlayerQueues = false;
+            _useSeatQueues = false;
 
             if (actions != null)
             {
@@ -38,32 +39,38 @@ namespace TexasHoldem.Gateway
 
         public void EnqueueAction(PlayerAction action)
         {
-            if (_usePlayerQueues)
+            if (_useSeatQueues)
                 throw new InvalidOperationException(
-                    "PlayerId별 큐 모드에서는 EnqueueAction(string, PlayerAction)을 사용하세요.");
+                    "SeatIndex별 큐 모드에서는 EnqueueAction(int, PlayerAction)을 사용하세요.");
 
             _sharedQueue.Enqueue(action);
         }
 
-        public void EnqueueAction(string playerId, PlayerAction action)
+        public void EnqueueAction(int seatIndex, PlayerAction action)
         {
-            if (!_usePlayerQueues)
+            if (!_useSeatQueues)
                 throw new InvalidOperationException(
                     "단일 큐 모드에서는 EnqueueAction(PlayerAction)을 사용하세요.");
 
-            if (!_playerQueues.ContainsKey(playerId))
-                _playerQueues[playerId] = new Queue<PlayerAction>();
+            if (!_seatQueues.ContainsKey(seatIndex))
+                _seatQueues[seatIndex] = new Queue<PlayerAction>();
 
-            _playerQueues[playerId].Enqueue(action);
+            _seatQueues[seatIndex].Enqueue(action);
         }
 
-        public Task<PlayerAction> GetAction(string playerId, LegalActionSet legalActions)
+        public Task<PlayerAction> RequestActionAsync(
+            int seatIndex,
+            IReadOnlyList<ActionType> legalActions,
+            int minRaise,
+            int maxRaise,
+            int callAmount,
+            CancellationToken ct)
         {
-            if (_usePlayerQueues)
+            if (_useSeatQueues)
             {
-                if (!_playerQueues.TryGetValue(playerId, out var queue) || queue.Count == 0)
+                if (!_seatQueues.TryGetValue(seatIndex, out var queue) || queue.Count == 0)
                     throw new InvalidOperationException(
-                        $"StubPlayerActionProvider: PlayerId '{playerId}'에 대한 남은 액션이 없습니다.");
+                        $"StubPlayerActionProvider: SeatIndex '{seatIndex}'에 대한 남은 액션이 없습니다.");
 
                 return Task.FromResult(queue.Dequeue());
             }
