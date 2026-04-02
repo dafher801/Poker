@@ -225,11 +225,10 @@ namespace TexasHoldem.Tests.EditMode
             _usecase.RunBettingRound(state, actionProvider, broadcaster).Wait();
 
             // P1이 첫 번째로 Fold한 것이 기록되어야 함 (UTG가 첫 액션자)
-            var log = broadcaster.GetLog();
-            var playerActedEvents = log.Where(e => e.EventName == "OnPlayerActed").ToList();
+            var playerActedEvents = broadcaster.GetEvents<PlayerActedEvent>();
             Assert.AreEqual(2, playerActedEvents.Count, "2명이 액션해야 한다");
-            Assert.AreEqual("P1", (string)playerActedEvents[0].Args[0], "UTG(P1)이 첫 번째 액션자여야 한다");
-            Assert.AreEqual("P2", (string)playerActedEvents[1].Args[0], "SB(P2)가 두 번째 액션자여야 한다");
+            Assert.AreEqual(0, playerActedEvents[0].SeatIndex, "UTG(P1, seat 0)이 첫 번째 액션자여야 한다");
+            Assert.AreEqual(1, playerActedEvents[1].SeatIndex, "SB(P2, seat 1)가 두 번째 액션자여야 한다");
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -260,12 +259,11 @@ namespace TexasHoldem.Tests.EditMode
 
             _usecase.RunBettingRound(state, actionProvider, broadcaster).Wait();
 
-            var log = broadcaster.GetLog();
-            var playerActedEvents = log.Where(e => e.EventName == "OnPlayerActed").ToList();
+            var playerActedEvents = broadcaster.GetEvents<PlayerActedEvent>();
             Assert.AreEqual(3, playerActedEvents.Count, "3명이 액션해야 한다");
-            Assert.AreEqual("P2", (string)playerActedEvents[0].Args[0], "딜러 다음(P2)이 첫 액션자여야 한다");
-            Assert.AreEqual("P3", (string)playerActedEvents[1].Args[0], "P3가 두 번째 액션자여야 한다");
-            Assert.AreEqual("P1", (string)playerActedEvents[2].Args[0], "P1(딜러)이 마지막 액션자여야 한다");
+            Assert.AreEqual(1, playerActedEvents[0].SeatIndex, "딜러 다음(P2, seat 1)이 첫 액션자여야 한다");
+            Assert.AreEqual(2, playerActedEvents[1].SeatIndex, "P3(seat 2)가 두 번째 액션자여야 한다");
+            Assert.AreEqual(0, playerActedEvents[2].SeatIndex, "P1(딜러, seat 0)이 마지막 액션자여야 한다");
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -294,32 +292,19 @@ namespace TexasHoldem.Tests.EditMode
 
             _usecase.RunBettingRound(state, actionProvider, broadcaster).Wait();
 
-            var log = broadcaster.GetLog();
+            // 순서: PlayerActedEvent × 2 → PotUpdatedEvent
+            var playerActedEvents = broadcaster.GetEvents<PlayerActedEvent>();
+            Assert.AreEqual(2, playerActedEvents.Count, "PlayerActedEvent는 2회 호출되어야 한다");
 
-            // 순서: OnBettingRoundStarted → OnPlayerActed × 2 → OnPotUpdated → OnBettingRoundEnded
-            Assert.IsTrue(log.Count >= 5, $"최소 5개 이벤트가 기록되어야 한다 (실제: {log.Count})");
+            var potUpdatedEvents = broadcaster.GetEvents<PotUpdatedEvent>();
+            Assert.AreEqual(1, potUpdatedEvents.Count, "PotUpdatedEvent는 1회 호출되어야 한다");
 
-            Assert.AreEqual("OnBettingRoundStarted", log[0].EventName, "첫 이벤트는 OnBettingRoundStarted여야 한다");
-            Assert.AreEqual(GamePhase.Flop, (GamePhase)log[0].Args[0]);
-
-            Assert.AreEqual("OnPlayerActed", log[1].EventName);
-            Assert.AreEqual("OnPlayerActed", log[2].EventName);
-
-            Assert.AreEqual("OnPotUpdated", log[3].EventName, "팟 업데이트가 호출되어야 한다");
-            Assert.AreEqual("OnBettingRoundEnded", log[4].EventName, "마지막은 OnBettingRoundEnded여야 한다");
-            Assert.AreEqual(GamePhase.Flop, (GamePhase)log[4].Args[0]);
-
-            // OnBettingRoundStarted는 정확히 1회
-            int startedCount = log.Count(e => e.EventName == "OnBettingRoundStarted");
-            Assert.AreEqual(1, startedCount, "OnBettingRoundStarted는 1회 호출되어야 한다");
-
-            // OnBettingRoundEnded는 정확히 1회
-            int endedCount = log.Count(e => e.EventName == "OnBettingRoundEnded");
-            Assert.AreEqual(1, endedCount, "OnBettingRoundEnded는 1회 호출되어야 한다");
-
-            // OnPlayerActed는 정확히 2회
-            int actedCount = log.Count(e => e.EventName == "OnPlayerActed");
-            Assert.AreEqual(2, actedCount, "OnPlayerActed는 2회 호출되어야 한다");
+            // 전체 이벤트 순서 확인: PlayerActed → PlayerActed → PotUpdated
+            var events = broadcaster.GetEvents();
+            Assert.IsTrue(events.Count >= 3, $"최소 3개 이벤트가 기록되어야 한다 (실제: {events.Count})");
+            Assert.IsInstanceOf<PlayerActedEvent>(events[0]);
+            Assert.IsInstanceOf<PlayerActedEvent>(events[1]);
+            Assert.IsInstanceOf<PotUpdatedEvent>(events[2]);
         }
     }
 }

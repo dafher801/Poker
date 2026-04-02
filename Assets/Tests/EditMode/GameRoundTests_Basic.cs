@@ -153,9 +153,8 @@ namespace TexasHoldem.Tests.EditMode
             var usecase = new GameRoundUsecase();
             usecase.PlayRound(state, random, actionProvider, broadcaster, repository).Wait();
 
-            // 검증 1: 쇼다운 도달 — OnShowdown 이벤트가 호출되었는지
-            var log = broadcaster.GetLog();
-            bool showdownCalled = log.Any(e => e.EventName == "OnShowdown");
+            // 검증 1: 쇼다운 도달 — ShowdownResultEvent가 발행되었는지
+            bool showdownCalled = broadcaster.GetEvents<ShowdownResultEvent>().Count > 0;
             Assert.IsTrue(showdownCalled, "쇼다운 이벤트가 호출되어야 한다.");
 
             // 검증 2: P0(AA)이 팟을 수령 — P0의 칩이 가장 많아야 한다

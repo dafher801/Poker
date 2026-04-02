@@ -137,51 +137,42 @@ namespace TexasHoldem.Tests.EditMode
         // ────────────────────────────────────────────────────────────────
 
         [Test]
-        public void StubGameEventBroadcaster_OnBettingRoundStarted_LogsEvent()
+        public void StubGameEventBroadcaster_Broadcast_RecordsEvent()
         {
             var broadcaster = new StubGameEventBroadcaster();
+            var evt = new PlayerActedEvent(DateTime.UtcNow.Ticks, "", 0, ActionType.Raise, 50);
 
-            broadcaster.OnBettingRoundStarted(GamePhase.Flop);
+            broadcaster.Broadcast(evt);
 
-            var log = broadcaster.GetLog();
-            Assert.AreEqual(1, log.Count);
-            Assert.AreEqual("OnBettingRoundStarted", log[0].EventName);
-            Assert.AreEqual(GamePhase.Flop, log[0].Args[0]);
+            Assert.AreEqual(1, broadcaster.EventCount);
+            Assert.AreSame(evt, broadcaster.GetEventAt(0));
         }
 
         [Test]
-        public void StubGameEventBroadcaster_OnPlayerActed_LogsEvent()
+        public void StubGameEventBroadcaster_GetEventsGeneric_FiltersCorrectly()
         {
             var broadcaster = new StubGameEventBroadcaster();
-            var action = new PlayerAction("p1", ActionType.Raise, 50);
+            broadcaster.Broadcast(new PlayerActedEvent(DateTime.UtcNow.Ticks, "", 0, ActionType.Check, 0));
+            broadcaster.Broadcast(new PotUpdatedEvent(DateTime.UtcNow.Ticks, "", 100, new List<int>()));
 
-            broadcaster.OnPlayerActed("p1", action);
-
-            var log = broadcaster.GetLog();
-            Assert.AreEqual(1, log.Count);
-            Assert.AreEqual("OnPlayerActed", log[0].EventName);
-            Assert.AreEqual("p1", log[0].Args[0]);
-            Assert.AreSame(action, log[0].Args[1]);
+            var playerEvents = broadcaster.GetEvents<PlayerActedEvent>();
+            Assert.AreEqual(1, playerEvents.Count);
+            Assert.AreEqual(ActionType.Check, playerEvents[0].ActionType);
         }
 
         [Test]
-        public void StubGameEventBroadcaster_MultipleEvents_LogsAllInOrder()
+        public void StubGameEventBroadcaster_MultipleEvents_RecordsAllInOrder()
         {
             var broadcaster = new StubGameEventBroadcaster();
-            var action = new PlayerAction("p1", ActionType.Check, 0);
-            var pots = new List<Pot> { new Pot(100, new List<string> { "p1" }) };
 
-            broadcaster.OnBettingRoundStarted(GamePhase.PreFlop);
-            broadcaster.OnPlayerActed("p1", action);
-            broadcaster.OnPotUpdated(pots);
-            broadcaster.OnBettingRoundEnded(GamePhase.PreFlop);
+            broadcaster.Broadcast(new HandStartedEvent(DateTime.UtcNow.Ticks, "", 0, new List<int> { 0, 1 }));
+            broadcaster.Broadcast(new PlayerActedEvent(DateTime.UtcNow.Ticks, "", 0, ActionType.Call, 10));
+            broadcaster.Broadcast(new PotUpdatedEvent(DateTime.UtcNow.Ticks, "", 100, new List<int>()));
 
-            var log = broadcaster.GetLog();
-            Assert.AreEqual(4, log.Count);
-            Assert.AreEqual("OnBettingRoundStarted", log[0].EventName);
-            Assert.AreEqual("OnPlayerActed", log[1].EventName);
-            Assert.AreEqual("OnPotUpdated", log[2].EventName);
-            Assert.AreEqual("OnBettingRoundEnded", log[3].EventName);
+            Assert.AreEqual(3, broadcaster.EventCount);
+            Assert.IsInstanceOf<HandStartedEvent>(broadcaster.GetEventAt(0));
+            Assert.IsInstanceOf<PlayerActedEvent>(broadcaster.GetEventAt(1));
+            Assert.IsInstanceOf<PotUpdatedEvent>(broadcaster.GetEventAt(2));
         }
     }
 }
