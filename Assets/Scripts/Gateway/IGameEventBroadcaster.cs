@@ -19,6 +19,7 @@ namespace TexasHoldem.Gateway
         void OnBettingRoundEnded(GamePhase phase);
         void OnPotUpdated(IReadOnlyList<Pot> pots);
         void OnShowdown(IReadOnlyList<(string PlayerId, HandRank Rank, IReadOnlyList<Card> BestFive)> results);
+        void OnHandEndedByFold(int winningSeatIndex, int potAmount);
         void OnRoundEnded(IReadOnlyList<(string PlayerId, int ChipDelta)> settlements);
     }
 }

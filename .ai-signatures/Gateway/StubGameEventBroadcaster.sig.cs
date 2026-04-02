@@ -21,6 +21,7 @@ namespace TexasHoldem.Gateway
         public void OnBettingRoundEnded(GamePhase phase) { /* logs event */ }
         public void OnPotUpdated(IReadOnlyList<Pot> pots) { /* logs event */ }
         public void OnShowdown(IReadOnlyList<(string PlayerId, HandRank Rank, IReadOnlyList<Card> BestFive)> results) { /* logs event */ }
+        public void OnHandEndedByFold(int winningSeatIndex, int potAmount) { /* logs event */ }
         public void OnRoundEnded(IReadOnlyList<(string PlayerId, int ChipDelta)> settlements) { /* logs event */ }
         public IReadOnlyList<(string EventName, object[] Args)> GetLog() { /* ... */ }
     }

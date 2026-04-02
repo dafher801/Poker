@@ -58,6 +58,11 @@ namespace TexasHoldem.Gateway
             _log.Add((nameof(OnShowdown), new object[] { results }));
         }
 
+        public void OnHandEndedByFold(int winningSeatIndex, int potAmount)
+        {
+            _log.Add((nameof(OnHandEndedByFold), new object[] { winningSeatIndex, potAmount }));
+        }
+
         public void OnRoundEnded(IReadOnlyList<(string PlayerId, int ChipDelta)> settlements)
         {
             _log.Add((nameof(OnRoundEnded), new object[] { settlements }));
