@@ -8,7 +8,8 @@
       "Read(//tmp/**)",
       "Bash(cp /tmp/LegalActionSet_bom.cs \"/mnt/c/Unity Projects/Poker/Assets/Scripts/Entity/LegalActionSet.cs\")",
       "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/Gateway/IGameEventBroadcaster.cs\")",
-      "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/Gateway/StubGameEventBroadcaster.cs\")"
+      "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/Gateway/StubGameEventBroadcaster.cs\")",
+      "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Tests/EditMode/GatewayStubTests.cs\")"
     ]
   }
 }

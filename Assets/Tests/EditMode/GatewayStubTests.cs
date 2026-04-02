@@ -137,15 +137,15 @@ namespace TexasHoldem.Tests.EditMode
         // ────────────────────────────────────────────────────────────────
 
         [Test]
-        public void StubGameEventBroadcaster_OnPhaseChanged_LogsEvent()
+        public void StubGameEventBroadcaster_OnBettingRoundStarted_LogsEvent()
         {
             var broadcaster = new StubGameEventBroadcaster();
 
-            broadcaster.OnPhaseChanged(GamePhase.Flop);
+            broadcaster.OnBettingRoundStarted(GamePhase.Flop);
 
             var log = broadcaster.GetLog();
             Assert.AreEqual(1, log.Count);
-            Assert.AreEqual("OnPhaseChanged", log[0].EventName);
+            Assert.AreEqual("OnBettingRoundStarted", log[0].EventName);
             Assert.AreEqual(GamePhase.Flop, log[0].Args[0]);
         }
 
@@ -155,36 +155,33 @@ namespace TexasHoldem.Tests.EditMode
             var broadcaster = new StubGameEventBroadcaster();
             var action = new PlayerAction("p1", ActionType.Raise, 50);
 
-            broadcaster.OnPlayerActed(action);
+            broadcaster.OnPlayerActed("p1", action);
 
             var log = broadcaster.GetLog();
             Assert.AreEqual(1, log.Count);
             Assert.AreEqual("OnPlayerActed", log[0].EventName);
-            Assert.AreSame(action, log[0].Args[0]);
+            Assert.AreEqual("p1", log[0].Args[0]);
+            Assert.AreSame(action, log[0].Args[1]);
         }
 
         [Test]
         public void StubGameEventBroadcaster_MultipleEvents_LogsAllInOrder()
         {
             var broadcaster = new StubGameEventBroadcaster();
-            var cards = new List<Card> { new Card(Suit.Spade, Rank.Ace) };
+            var action = new PlayerAction("p1", ActionType.Check, 0);
             var pots = new List<Pot> { new Pot(100, new List<string> { "p1" }) };
 
-            broadcaster.OnPhaseChanged(GamePhase.PreFlop);
-            broadcaster.OnCardsDealt("p1", cards);
-            broadcaster.OnCommunityCardsRevealed(cards);
+            broadcaster.OnBettingRoundStarted(GamePhase.PreFlop);
+            broadcaster.OnPlayerActed("p1", action);
             broadcaster.OnPotUpdated(pots);
-            broadcaster.OnShowdown(new List<PlayerData>());
-            broadcaster.OnHandResult(new List<string> { "p1" }, pots);
+            broadcaster.OnBettingRoundEnded(GamePhase.PreFlop);
 
             var log = broadcaster.GetLog();
-            Assert.AreEqual(6, log.Count);
-            Assert.AreEqual("OnPhaseChanged", log[0].EventName);
-            Assert.AreEqual("OnCardsDealt", log[1].EventName);
-            Assert.AreEqual("OnCommunityCardsRevealed", log[2].EventName);
-            Assert.AreEqual("OnPotUpdated", log[3].EventName);
-            Assert.AreEqual("OnShowdown", log[4].EventName);
-            Assert.AreEqual("OnHandResult", log[5].EventName);
+            Assert.AreEqual(4, log.Count);
+            Assert.AreEqual("OnBettingRoundStarted", log[0].EventName);
+            Assert.AreEqual("OnPlayerActed", log[1].EventName);
+            Assert.AreEqual("OnPotUpdated", log[2].EventName);
+            Assert.AreEqual("OnBettingRoundEnded", log[3].EventName);
         }
     }
 }
