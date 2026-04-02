@@ -201,5 +201,143 @@ namespace TexasHoldem.Tests.EditMode
             Assert.AreEqual(0, result.MinRaiseAmount);
             Assert.AreEqual(0, result.MaxRaiseAmount);
         }
+
+        // ════════════════════════════════════════════════════════════════
+        // Validate 메서드 테스트
+        // ════════════════════════════════════════════════════════════════
+
+        private LegalActionSet CreateLegalSet(List<ActionType> actions, int callAmount = 0,
+            int minRaise = 0, int maxRaise = 0)
+        {
+            return new LegalActionSet
+            {
+                AvailableActions = actions,
+                CallAmount = callAmount,
+                MinRaiseAmount = minRaise,
+                MaxRaiseAmount = maxRaise
+            };
+        }
+
+        [Test]
+        public void Validate_Fold_WhenAvailable_ReturnsTrue()
+        {
+            var legalSet = CreateLegalSet(new List<ActionType> { ActionType.Fold, ActionType.Check });
+            var action = new PlayerAction("P1", ActionType.Fold, 0);
+
+            Assert.IsTrue(_validator.Validate(action, legalSet));
+        }
+
+        [Test]
+        public void Validate_Check_WhenAvailable_ReturnsTrue()
+        {
+            var legalSet = CreateLegalSet(new List<ActionType> { ActionType.Fold, ActionType.Check });
+            var action = new PlayerAction("P1", ActionType.Check, 0);
+
+            Assert.IsTrue(_validator.Validate(action, legalSet));
+        }
+
+        [Test]
+        public void Validate_Check_WhenNotAvailable_ReturnsFalse()
+        {
+            var legalSet = CreateLegalSet(new List<ActionType> { ActionType.Fold, ActionType.Call },
+                callAmount: 100);
+            var action = new PlayerAction("P1", ActionType.Check, 0);
+
+            Assert.IsFalse(_validator.Validate(action, legalSet));
+        }
+
+        [Test]
+        public void Validate_Call_CorrectAmount_ReturnsTrue()
+        {
+            var legalSet = CreateLegalSet(
+                new List<ActionType> { ActionType.Fold, ActionType.Call, ActionType.Raise },
+                callAmount: 200, minRaise: 400, maxRaise: 1000);
+            var action = new PlayerAction("P1", ActionType.Call, 200);
+
+            Assert.IsTrue(_validator.Validate(action, legalSet));
+        }
+
+        [Test]
+        public void Validate_Call_WrongAmount_ReturnsFalse()
+        {
+            var legalSet = CreateLegalSet(
+                new List<ActionType> { ActionType.Fold, ActionType.Call },
+                callAmount: 200);
+            var action = new PlayerAction("P1", ActionType.Call, 150);
+
+            Assert.IsFalse(_validator.Validate(action, legalSet));
+        }
+
+        [Test]
+        public void Validate_Raise_WithinRange_ReturnsTrue()
+        {
+            var legalSet = CreateLegalSet(
+                new List<ActionType> { ActionType.Fold, ActionType.Call, ActionType.Raise },
+                callAmount: 200, minRaise: 400, maxRaise: 1000);
+            var action = new PlayerAction("P1", ActionType.Raise, 500);
+
+            Assert.IsTrue(_validator.Validate(action, legalSet));
+        }
+
+        [Test]
+        public void Validate_Raise_AtMinimum_ReturnsTrue()
+        {
+            var legalSet = CreateLegalSet(
+                new List<ActionType> { ActionType.Fold, ActionType.Raise },
+                minRaise: 400, maxRaise: 1000);
+            var action = new PlayerAction("P1", ActionType.Raise, 400);
+
+            Assert.IsTrue(_validator.Validate(action, legalSet));
+        }
+
+        [Test]
+        public void Validate_Raise_BelowMinimum_ReturnsFalse()
+        {
+            var legalSet = CreateLegalSet(
+                new List<ActionType> { ActionType.Fold, ActionType.Raise },
+                minRaise: 400, maxRaise: 1000);
+            var action = new PlayerAction("P1", ActionType.Raise, 300);
+
+            Assert.IsFalse(_validator.Validate(action, legalSet));
+        }
+
+        [Test]
+        public void Validate_Raise_AboveMaximum_ReturnsFalse()
+        {
+            var legalSet = CreateLegalSet(
+                new List<ActionType> { ActionType.Fold, ActionType.Raise },
+                minRaise: 400, maxRaise: 1000);
+            var action = new PlayerAction("P1", ActionType.Raise, 1100);
+
+            Assert.IsFalse(_validator.Validate(action, legalSet));
+        }
+
+        [Test]
+        public void Validate_AllIn_WhenAvailable_ReturnsTrue()
+        {
+            var legalSet = CreateLegalSet(
+                new List<ActionType> { ActionType.Fold, ActionType.AllIn },
+                maxRaise: 500);
+            var action = new PlayerAction("P1", ActionType.AllIn, 500);
+
+            Assert.IsTrue(_validator.Validate(action, legalSet));
+        }
+
+        [Test]
+        public void Validate_AllIn_WhenNotAvailable_ReturnsFalse()
+        {
+            var legalSet = CreateLegalSet(new List<ActionType> { ActionType.Fold, ActionType.Check });
+            var action = new PlayerAction("P1", ActionType.AllIn, 100);
+
+            Assert.IsFalse(_validator.Validate(action, legalSet));
+        }
+
+        [Test]
+        public void Validate_NullAction_ReturnsFalse()
+        {
+            var legalSet = CreateLegalSet(new List<ActionType> { ActionType.Fold });
+
+            Assert.IsFalse(_validator.Validate(null, legalSet));
+        }
     }
 }

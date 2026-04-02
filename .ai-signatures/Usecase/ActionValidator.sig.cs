@@ -1,9 +1,13 @@
 ﻿// Source: Assets/Scripts/Usecase/ActionValidator.cs
 // ActionValidator.cs
-// 특정 플레이어가 현재 GameState에서 취할 수 있는 합법 액션을 계산한다.
-// 사용 방법: ActionValidator.GetLegalActions(state, playerId)를 호출하면
-// LegalActionSet(수행 가능 액션, 콜 금액, 최소/최대 레이즈 총액)을 반환한다.
-// 플레이어가 Active 상태가 아니면 빈 LegalActionSet을 반환한다.
+// 특정 플레이어가 현재 GameState에서 취할 수 있는 합법 액션을 계산하고,
+// 제출된 액션의 유효성을 검증한다.
+// 사용 방법:
+//   1) ActionValidator.GetLegalActions(state, playerId)를 호출하면
+//      LegalActionSet(수행 가능 액션, 콜 금액, 최소/최대 레이즈 총액)을 반환한다.
+//      플레이어가 Active 상태가 아니면 빈 LegalActionSet을 반환한다.
+//   2) ActionValidator.Validate(action, legalSet)를 호출하면
+//      액션이 현재 합법 액션 세트에 부합하는지 검증하여 bool을 반환한다.
 
 using System.Collections.Generic;
 using TexasHoldem.Entity;
@@ -95,6 +99,41 @@ namespace TexasHoldem.Usecase
                 MinRaiseAmount = minRaiseTotal,
                 MaxRaiseAmount = playerTotalChips
             };
+        }
+
+        // 제출된 액션이 합법 액션 세트에 부합하는지 검증한다.
+        // Check는 콜 금액이 0일 때만 허용, Raise는 최소~최대 레이즈 범위 내여야 한다.
+        public bool Validate(PlayerAction action, LegalActionSet legalSet) { /* ... */ }
+        {
+            if (action == null)
+            {
+                return false;
+            }
+
+            if (legalSet.AvailableActions == null || !legalSet.AvailableActions.Contains(action.Type))
+            {
+                return false;
+            }
+
+            switch (action.Type)
+            {
+                case ActionType.Fold:
+                case ActionType.Check:
+                    return true;
+
+                case ActionType.Call:
+                    return action.Amount == legalSet.CallAmount;
+
+                case ActionType.Raise:
+                    return action.Amount >= legalSet.MinRaiseAmount
+                        && action.Amount <= legalSet.MaxRaiseAmount;
+
+                case ActionType.AllIn:
+                    return action.Amount >= 0;
+
+                default:
+                    return false;
+            }
         }
     }
 }
