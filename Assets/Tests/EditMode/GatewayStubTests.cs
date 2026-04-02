@@ -104,15 +104,8 @@ namespace TexasHoldem.Tests.EditMode
             var action2 = new PlayerAction("p1", ActionType.Fold, 0);
             var provider = new StubPlayerActionProvider(new[] { action1, action2 });
 
-            var players = new List<PlayerData>
-            {
-                new PlayerData("p1", "Alice", 1000, 0),
-                new PlayerData("p2", "Bob",   1000, 1)
-            };
-            var snapshot = new GameState(players, new BlindInfo(10, 20));
-
-            var result1 = provider.GetAction("p1", snapshot, new List<ActionType>()).Result;
-            var result2 = provider.GetAction("p1", snapshot, new List<ActionType>()).Result;
+            var result1 = provider.GetAction("p1", default(LegalActionSet)).Result;
+            var result2 = provider.GetAction("p1", default(LegalActionSet)).Result;
 
             Assert.AreSame(action1, result1);
             Assert.AreSame(action2, result2);
@@ -122,15 +115,9 @@ namespace TexasHoldem.Tests.EditMode
         public void StubPlayerActionProvider_GetActionOnEmptyQueue_ThrowsInvalidOperationException()
         {
             var provider = new StubPlayerActionProvider();
-            var players = new List<PlayerData>
-            {
-                new PlayerData("p1", "Alice", 1000, 0),
-                new PlayerData("p2", "Bob",   1000, 1)
-            };
-            var snapshot = new GameState(players, new BlindInfo(10, 20));
 
             Assert.Throws<InvalidOperationException>(() =>
-                provider.GetAction("p1", snapshot, new List<ActionType>()));
+                provider.GetAction("p1", default(LegalActionSet)));
         }
 
         [Test]
@@ -140,14 +127,7 @@ namespace TexasHoldem.Tests.EditMode
             var action = new PlayerAction("p1", ActionType.Check, 0);
             provider.EnqueueAction(action);
 
-            var players = new List<PlayerData>
-            {
-                new PlayerData("p1", "Alice", 1000, 0),
-                new PlayerData("p2", "Bob",   1000, 1)
-            };
-            var snapshot = new GameState(players, new BlindInfo(10, 20));
-
-            var result = provider.GetAction("p1", snapshot, new List<ActionType>()).Result;
+            var result = provider.GetAction("p1", default(LegalActionSet)).Result;
 
             Assert.AreSame(action, result);
         }
