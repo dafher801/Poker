@@ -1,6 +1,7 @@
 ﻿// PotManagerTests.cs
 // PotManager의 CollectBets, CalculateSidePots, DistributePots 메서드를 검증하는 EditMode 테스트 모음.
 // 베팅 수집, 사이드 팟 분리, 승자 분배가 올바르게 동작하는지 확인한다.
+// PlayerBetInfo 기반 CollectBets, GetPots, GetTotalPot, Reset, RemovePlayer 통합 테스트도 포함한다.
 
 using System.Collections.Generic;
 using System.Linq;
@@ -215,6 +216,209 @@ namespace TexasHoldem.Tests.EditMode
             Assert.AreEqual(101, payoutDict["P1"], "P1(첫 번째)은 100 + 나머지 1 = 101을 받아야 한다");
             Assert.AreEqual(100, payoutDict["P2"], "P2는 균등 분배 100을 받아야 한다");
             Assert.AreEqual(100, payoutDict["P3"], "P3는 균등 분배 100을 받아야 한다");
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // PlayerBetInfo 기반 PotManager 통합 테스트
+        // ════════════════════════════════════════════════════════════════
+
+        // ────────────────────────────────────────────────────────────────
+        // (1) 프리플랍 베팅 수집 후 GetPots/GetTotalPot 정확성
+        // ────────────────────────────────────────────────────────────────
+
+        [Test]
+        public void CollectBets_PlayerBetInfo_PreflopBets_GetPotsAndTotalCorrect()
+        {
+            var bets = new List<PlayerBetInfo>
+            {
+                new PlayerBetInfo("P1", 100, false, false),
+                new PlayerBetInfo("P2", 100, false, false),
+                new PlayerBetInfo("P3", 100, false, false)
+            };
+
+            _potManager.CollectBets(bets);
+
+            var pots = _potManager.GetPots();
+            Assert.AreEqual(1, pots.Count, "단일 메인 팟이어야 한다");
+            Assert.AreEqual(300, pots[0].Amount, "팟 금액은 300이어야 한다");
+            Assert.AreEqual(3, pots[0].EligiblePlayerIds.Count);
+            Assert.IsTrue(pots[0].EligiblePlayerIds.Contains("P1"));
+            Assert.IsTrue(pots[0].EligiblePlayerIds.Contains("P2"));
+            Assert.IsTrue(pots[0].EligiblePlayerIds.Contains("P3"));
+            Assert.AreEqual(300, _potManager.GetTotalPot(), "GetTotalPot은 300이어야 한다");
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // (2) 4회 CollectBets 호출 시 팟이 올바르게 누적·병합
+        // ────────────────────────────────────────────────────────────────
+
+        [Test]
+        public void CollectBets_PlayerBetInfo_FourRounds_PotsAccumulateCorrectly()
+        {
+            // 프리플랍: 3명 각 100
+            var preflopBets = new List<PlayerBetInfo>
+            {
+                new PlayerBetInfo("P1", 100, false, false),
+                new PlayerBetInfo("P2", 100, false, false),
+                new PlayerBetInfo("P3", 100, false, false)
+            };
+            _potManager.CollectBets(preflopBets);
+
+            // 플랍: 3명 각 50
+            var flopBets = new List<PlayerBetInfo>
+            {
+                new PlayerBetInfo("P1", 50, false, false),
+                new PlayerBetInfo("P2", 50, false, false),
+                new PlayerBetInfo("P3", 50, false, false)
+            };
+            _potManager.CollectBets(flopBets);
+
+            // 턴: 3명 각 200
+            var turnBets = new List<PlayerBetInfo>
+            {
+                new PlayerBetInfo("P1", 200, false, false),
+                new PlayerBetInfo("P2", 200, false, false),
+                new PlayerBetInfo("P3", 200, false, false)
+            };
+            _potManager.CollectBets(turnBets);
+
+            // 리버: 3명 각 150
+            var riverBets = new List<PlayerBetInfo>
+            {
+                new PlayerBetInfo("P1", 150, false, false),
+                new PlayerBetInfo("P2", 150, false, false),
+                new PlayerBetInfo("P3", 150, false, false)
+            };
+            _potManager.CollectBets(riverBets);
+
+            // 동일 참여자 집합이므로 하나의 팟으로 병합되어야 한다
+            var pots = _potManager.GetPots();
+            Assert.AreEqual(1, pots.Count, "동일 참여자 집합은 하나의 팟으로 병합되어야 한다");
+
+            // 총액: (100+50+200+150) * 3 = 1500
+            Assert.AreEqual(1500, pots[0].Amount, "팟 금액은 1500이어야 한다");
+            Assert.AreEqual(1500, _potManager.GetTotalPot());
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // (3) 여러 라운드에 걸쳐 올인 플레이어가 발생하는 복합 시나리오
+        // ────────────────────────────────────────────────────────────────
+
+        [Test]
+        public void CollectBets_PlayerBetInfo_MultiRoundAllIns_SidePotsAccumulateCorrectly()
+        {
+            // 프리플랍: P1 올인 50, P2·P3 각 100
+            var preflopBets = new List<PlayerBetInfo>
+            {
+                new PlayerBetInfo("P1", 50, true, false),
+                new PlayerBetInfo("P2", 100, false, false),
+                new PlayerBetInfo("P3", 100, false, false)
+            };
+            _potManager.CollectBets(preflopBets);
+
+            // 프리플랍 결과: 메인 팟(150, P1·P2·P3) + 사이드 팟(100, P2·P3)
+            var potsAfterPreflop = _potManager.GetPots();
+            Assert.AreEqual(2, potsAfterPreflop.Count, "프리플랍 후 2개의 팟이어야 한다");
+            Assert.AreEqual(250, _potManager.GetTotalPot(), "프리플랍 후 총 팟은 250이어야 한다");
+
+            // 플랍: P2 올인 80, P3 콜 80 (P1은 이미 올인이므로 참여 안 함)
+            var flopBets = new List<PlayerBetInfo>
+            {
+                new PlayerBetInfo("P2", 80, true, false),
+                new PlayerBetInfo("P3", 80, false, false)
+            };
+            _potManager.CollectBets(flopBets);
+
+            // 플랍 결과: 메인 팟(150, P1·P2·P3) + 사이드 팟(100+160=260, P2·P3) 병합
+            var potsAfterFlop = _potManager.GetPots();
+            Assert.AreEqual(2, potsAfterFlop.Count, "플랍 후에도 2개의 팟이어야 한다");
+            Assert.AreEqual(410, _potManager.GetTotalPot(), "플랍 후 총 팟은 410이어야 한다");
+
+            // 메인 팟(P1·P2·P3 참여)은 150 유지
+            var mainPot = potsAfterFlop.FirstOrDefault(p =>
+                p.EligiblePlayerIds.Contains("P1") &&
+                p.EligiblePlayerIds.Contains("P2") &&
+                p.EligiblePlayerIds.Contains("P3"));
+            Assert.IsNotNull(mainPot, "P1·P2·P3 참여 메인 팟이 존재해야 한다");
+            Assert.AreEqual(150, mainPot.Amount, "메인 팟 금액은 150이어야 한다");
+
+            // 사이드 팟(P2·P3 참여)은 100 + 160 = 260
+            var sidePot = potsAfterFlop.FirstOrDefault(p =>
+                p.EligiblePlayerIds.Contains("P2") &&
+                p.EligiblePlayerIds.Contains("P3") &&
+                !p.EligiblePlayerIds.Contains("P1"));
+            Assert.IsNotNull(sidePot, "P2·P3 참여 사이드 팟이 존재해야 한다");
+            Assert.AreEqual(260, sidePot.Amount, "사이드 팟 금액은 260이어야 한다");
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // (4) Reset 후 팟이 비어 있는지 확인
+        // ────────────────────────────────────────────────────────────────
+
+        [Test]
+        public void Reset_AfterCollectBets_PotsAreEmpty()
+        {
+            var bets = new List<PlayerBetInfo>
+            {
+                new PlayerBetInfo("P1", 100, false, false),
+                new PlayerBetInfo("P2", 100, false, false)
+            };
+            _potManager.CollectBets(bets);
+
+            Assert.AreEqual(200, _potManager.GetTotalPot(), "Reset 전 팟이 존재해야 한다");
+
+            _potManager.Reset();
+
+            Assert.AreEqual(0, _potManager.GetPots().Count, "Reset 후 팟 목록은 비어 있어야 한다");
+            Assert.AreEqual(0, _potManager.GetTotalPot(), "Reset 후 총 팟은 0이어야 한다");
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // (5) RemovePlayer 호출 시 모든 팟에서 해당 플레이어 제거
+        // ────────────────────────────────────────────────────────────────
+
+        [Test]
+        public void RemovePlayer_RemovesFromAllPots()
+        {
+            // 올인으로 2개의 팟 생성: 메인 팟(P1·P2·P3), 사이드 팟(P2·P3)
+            var bets = new List<PlayerBetInfo>
+            {
+                new PlayerBetInfo("P1", 50, true, false),
+                new PlayerBetInfo("P2", 100, false, false),
+                new PlayerBetInfo("P3", 100, false, false)
+            };
+            _potManager.CollectBets(bets);
+
+            var potsBefore = _potManager.GetPots();
+            Assert.AreEqual(2, potsBefore.Count, "2개의 팟이 존재해야 한다");
+
+            // P2를 제거 (폴드 시 호출)
+            _potManager.RemovePlayer("P2");
+
+            var potsAfter = _potManager.GetPots();
+
+            // 모든 팟에서 P2가 제거되어야 한다
+            foreach (var pot in potsAfter)
+            {
+                Assert.IsFalse(pot.EligiblePlayerIds.Contains("P2"),
+                    "RemovePlayer 후 P2는 어떤 팟에도 포함되면 안 된다");
+            }
+
+            // 메인 팟에 P1·P3만 남아야 한다
+            var mainPot = potsAfter.FirstOrDefault(p => p.EligiblePlayerIds.Contains("P1"));
+            Assert.IsNotNull(mainPot);
+            Assert.AreEqual(2, mainPot.EligiblePlayerIds.Count);
+            Assert.IsTrue(mainPot.EligiblePlayerIds.Contains("P1"));
+            Assert.IsTrue(mainPot.EligiblePlayerIds.Contains("P3"));
+
+            // 사이드 팟에 P3만 남아야 한다
+            var sidePot = potsAfter.FirstOrDefault(p => !p.EligiblePlayerIds.Contains("P1"));
+            Assert.IsNotNull(sidePot);
+            Assert.AreEqual(1, sidePot.EligiblePlayerIds.Count);
+            Assert.IsTrue(sidePot.EligiblePlayerIds.Contains("P3"));
+
+            // 총 팟 금액은 변하지 않아야 한다
+            Assert.AreEqual(250, _potManager.GetTotalPot(), "RemovePlayer는 팟 금액에 영향을 주지 않아야 한다");
         }
     }
 }
