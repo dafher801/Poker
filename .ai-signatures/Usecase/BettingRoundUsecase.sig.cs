@@ -8,7 +8,9 @@
 // PotManager로 팟 수집·사이드팟 계산을 순서대로 수행한다.
 // BettingRoundResult로 라운드 완료 또는 폴드 승리를 반환한다.
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TexasHoldem.Entity;
@@ -80,8 +82,6 @@ namespace TexasHoldem.Usecase
             IPlayerActionProvider actionProvider,
             IGameEventBroadcaster broadcaster)
         {
-            broadcaster.OnBettingRoundStarted(state.Phase);
-
             int playerCount = state.Players.Count;
 
             // TurnOrderResolver로 초기 액션 순서 결정
@@ -139,7 +139,8 @@ namespace TexasHoldem.Usecase
                 // ActionExecutor로 상태 반영
                 _actionExecutor.Execute(state, action);
 
-                broadcaster.OnPlayerActed(player.Id, action);
+                broadcaster.Broadcast(new PlayerActedEvent(
+                    DateTime.UtcNow.Ticks, "", currentIndex, action.Type, action.Amount));
 
                 hasActed[currentIndex] = true;
 
@@ -152,9 +153,14 @@ namespace TexasHoldem.Usecase
                     foreach (var pot in state.Pots)
                         totalPot += pot.Amount;
 
-                    broadcaster.OnHandEndedByFold(winningSeatIndex, totalPot);
-                    broadcaster.OnPotUpdated(state.Pots);
-                    broadcaster.OnBettingRoundEnded(state.Phase);
+                    broadcaster.Broadcast(new HandEndedEvent(
+                        DateTime.UtcNow.Ticks, "",
+                        new List<PotAward> { /* ... */ }
+                        HandEndReason.LastManStanding));
+                    int mainPot = state.Pots.Count > 0 ? state.Pots[0].Amount : 0;
+                    var sidePotAmounts = state.Pots.Skip(1).Select(p => /* ... */;
+                    broadcaster.Broadcast(new PotUpdatedEvent(
+                        DateTime.UtcNow.Ticks, "", mainPot, sidePotAmounts));
 
                     return BettingRoundResult.HandEndedByFold(winningSeatIndex);
                 }
@@ -176,8 +182,10 @@ namespace TexasHoldem.Usecase
 
             _potManager.CalculateSidePots(state);
 
-            broadcaster.OnPotUpdated(state.Pots);
-            broadcaster.OnBettingRoundEnded(state.Phase);
+            int endMainPot = state.Pots.Count > 0 ? state.Pots[0].Amount : 0;
+            var endSidePots = state.Pots.Skip(1).Select(p => /* ... */;
+            broadcaster.Broadcast(new PotUpdatedEvent(
+                DateTime.UtcNow.Ticks, "", endMainPot, endSidePots));
 
             return BettingRoundResult.RoundComplete();
         }

@@ -131,8 +131,8 @@ namespace TexasHoldem.Tests.EditMode
             usecase.PlayRound(state, random, actionProvider, broadcaster, repository).Wait();
 
             // 검증 1: 쇼다운 도달
-            var log = broadcaster.GetLog();
-            bool showdownCalled = log.Any(e => e.EventName == "OnShowdown");
+            var events = broadcaster.GetEvents();
+            bool showdownCalled = events.Any(e => e is ShowdownResultEvent);
             Assert.IsTrue(showdownCalled, "쇼다운 이벤트가 호출되어야 한다.");
 
             // 검증 2: 메인 팟(100×3=300) → P0(A) 수령
@@ -244,10 +244,10 @@ namespace TexasHoldem.Tests.EditMode
             var usecase = new GameRoundUsecase();
             usecase.PlayRound(state, random, actionProvider, broadcaster, repository).Wait();
 
-            var log = broadcaster.GetLog();
+            var events = broadcaster.GetEvents();
 
             // 검증 1: 쇼다운 도달
-            bool showdownCalled = log.Any(e => e.EventName == "OnShowdown");
+            bool showdownCalled = events.Any(e => e is ShowdownResultEvent);
             Assert.IsTrue(showdownCalled, "쇼다운 이벤트가 호출되어야 한다.");
 
             // 검증 2: 팟 = 40 (20+20), 정확히 2등분 → 각 20칩 수령

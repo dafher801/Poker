@@ -120,20 +120,24 @@ namespace TexasHoldem.Tests.EditMode
             var usecase = new GameRoundUsecase();
             usecase.PlayRound(state, random, actionProvider, broadcaster, repository).Wait();
 
-            var log = broadcaster.GetLog();
+            var events = broadcaster.GetEvents();
 
             // 검증 1: OnBlindsPosted — P0이 SB(10), P1이 BB(20)
-            var blindsEvent = log.FirstOrDefault(e => e.EventName == "OnBlindsPosted");
-            Assert.IsNotNull(blindsEvent, "OnBlindsPosted 이벤트가 호출되어야 한다.");
-            Assert.AreEqual("P0", blindsEvent.Args[0], "SB 플레이어는 P0이어야 한다.");
-            Assert.AreEqual(10, blindsEvent.Args[1], "SB 금액은 10이어야 한다.");
-            Assert.AreEqual("P1", blindsEvent.Args[2], "BB 플레이어는 P1이어야 한다.");
-            Assert.AreEqual(20, blindsEvent.Args[3], "BB 금액은 20이어야 한다.");
+            var blindEvents = events.OfType<BlindPostedEvent>().ToList();
+            Assert.IsTrue(blindEvents.Count >= 2, "BlindPostedEvent가 최소 2개 이상 호출되어야 한다.");
+            var sbEvent = blindEvents.FirstOrDefault(e => e.BlindType == BlindType.Small);
+            var bbEvent = blindEvents.FirstOrDefault(e => e.BlindType == BlindType.Big);
+            Assert.IsNotNull(sbEvent, "SB BlindPostedEvent가 호출되어야 한다.");
+            Assert.IsNotNull(bbEvent, "BB BlindPostedEvent가 호출되어야 한다.");
+            Assert.AreEqual(0, sbEvent.SeatIndex, "SB 플레이어는 P0이어야 한다.");
+            Assert.AreEqual(10, sbEvent.Amount, "SB 금액은 10이어야 한다.");
+            Assert.AreEqual(1, bbEvent.SeatIndex, "BB 플레이어는 P1이어야 한다.");
+            Assert.AreEqual(20, bbEvent.Amount, "BB 금액은 20이어야 한다.");
 
             // 검증 2: 프리플롭 첫 액션이 P0(SB=딜러)인지 확인
-            var playerActedEvents = log.Where(e => e.EventName == "OnPlayerActed").ToList();
+            var playerActedEvents = events.OfType<PlayerActedEvent>().ToList();
             Assert.IsTrue(playerActedEvents.Count > 0, "OnPlayerActed 이벤트가 최소 1개 이상 있어야 한다.");
-            Assert.AreEqual("P0", playerActedEvents[0].Args[0],
+            Assert.AreEqual(0, playerActedEvents[0].SeatIndex,
                 "프리플롭 첫 액션 차례는 P0(SB=딜러)이어야 한다.");
 
             // 검증 3: 포스트플롭(Flop) 첫 액션이 P1(BB=비딜러)인지 확인
@@ -141,11 +145,11 @@ namespace TexasHoldem.Tests.EditMode
             // Flop 첫 액션은 playerActedEvents[2] (0-indexed)
             Assert.IsTrue(playerActedEvents.Count >= 3,
                 "Flop까지 최소 3개의 OnPlayerActed 이벤트가 있어야 한다.");
-            Assert.AreEqual("P1", playerActedEvents[2].Args[0],
+            Assert.AreEqual(1, playerActedEvents[2].SeatIndex,
                 "포스트플롭 첫 액션 차례는 P1(BB=비딜러)이어야 한다.");
 
             // 검증 4: 쇼다운 도달
-            bool showdownCalled = log.Any(e => e.EventName == "OnShowdown");
+            bool showdownCalled = events.Any(e => e is ShowdownResultEvent);
             Assert.IsTrue(showdownCalled, "쇼다운 이벤트가 호출되어야 한다.");
 
             // 검증 5: 칩 합계 = 1000 불변
@@ -299,11 +303,15 @@ namespace TexasHoldem.Tests.EditMode
                 "2차 라운드 딜러 인덱스가 1이어야 한다.");
 
             // 2차 라운드 블라인드 검증: SB=P2, BB=P0
-            var log2 = broadcaster2.GetLog();
-            var blindsEvent2 = log2.FirstOrDefault(e => e.EventName == "OnBlindsPosted");
-            Assert.IsNotNull(blindsEvent2, "2차 라운드 OnBlindsPosted 이벤트가 호출되어야 한다.");
-            Assert.AreEqual("P2", blindsEvent2.Args[0], "2차 라운드 SB 플레이어는 P2이어야 한다.");
-            Assert.AreEqual("P0", blindsEvent2.Args[2], "2차 라운드 BB 플레이어는 P0이어야 한다.");
+            var events2 = broadcaster2.GetEvents();
+            var blindEvents2 = events2.OfType<BlindPostedEvent>().ToList();
+            Assert.IsTrue(blindEvents2.Count >= 2, "2차 라운드 BlindPostedEvent가 최소 2개 이상 호출되어야 한다.");
+            var sbEvent2 = blindEvents2.FirstOrDefault(e => e.BlindType == BlindType.Small);
+            var bbEvent2 = blindEvents2.FirstOrDefault(e => e.BlindType == BlindType.Big);
+            Assert.IsNotNull(sbEvent2, "2차 라운드 SB BlindPostedEvent가 호출되어야 한다.");
+            Assert.IsNotNull(bbEvent2, "2차 라운드 BB BlindPostedEvent가 호출되어야 한다.");
+            Assert.AreEqual(2, sbEvent2.SeatIndex, "2차 라운드 SB 플레이어는 P2이어야 한다.");
+            Assert.AreEqual(0, bbEvent2.SeatIndex, "2차 라운드 BB 플레이어는 P0이어야 한다.");
 
             // 2차 라운드 후 칩 합계 = 3000 불변
             int totalAfterRound2 = state.Players.Sum(p => p.Chips);

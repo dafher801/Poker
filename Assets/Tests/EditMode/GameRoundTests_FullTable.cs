@@ -210,10 +210,10 @@ namespace TexasHoldem.Tests.EditMode
             var usecase = new GameRoundUsecase();
             usecase.PlayRound(state, random, actionProvider, broadcaster, repository).Wait();
 
-            var log = broadcaster.GetLog();
+            var events = broadcaster.GetEvents();
 
             // 검증 1: 쇼다운 도달
-            bool showdownCalled = log.Any(e => e.EventName == "OnShowdown");
+            bool showdownCalled = events.Any(e => e is ShowdownResultEvent);
             Assert.IsTrue(showdownCalled, "쇼다운 이벤트가 호출되어야 한다.");
 
             // 검증 2: 메인 팟 → P0(Pair of Aces, 최고) 수령

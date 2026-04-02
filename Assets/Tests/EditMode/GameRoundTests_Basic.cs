@@ -243,14 +243,14 @@ namespace TexasHoldem.Tests.EditMode
             var usecase = new GameRoundUsecase();
             usecase.PlayRound(state, random, actionProvider, broadcaster, repository).Wait();
 
-            var log = broadcaster.GetLog();
+            var events = broadcaster.GetEvents();
 
             // 검증 1: OnShowdown 이벤트가 호출되지 않아야 한다
-            bool showdownCalled = log.Any(e => e.EventName == "OnShowdown");
+            bool showdownCalled = events.Any(e => e is ShowdownResultEvent);
             Assert.IsFalse(showdownCalled, "조기 종료 시 OnShowdown이 호출되지 않아야 한다.");
 
             // 검증 2: 커뮤니티 카드가 딜링되지 않았어야 한다 (OnCommunityCardsDealt 미호출)
-            bool communityDealt = log.Any(e => e.EventName == "OnCommunityCardsDealt");
+            bool communityDealt = events.Any(e => e is CardsDealtEvent cde && cde.DealType != CardDealType.HoleCard);
             Assert.IsFalse(communityDealt, "조기 종료 시 커뮤니티 카드가 딜링되지 않아야 한다.");
 
             // 검증 3: P0이 팟(SB+BB+자신의 베팅에서 돌려받는 금액)을 수령
@@ -284,7 +284,7 @@ namespace TexasHoldem.Tests.EditMode
             }
 
             // 검증 7: OnRoundEnded 이벤트가 호출되었는지
-            bool roundEnded = log.Any(e => e.EventName == "OnRoundEnded");
+            bool roundEnded = events.Any(e => e is HandEndedEvent);
             Assert.IsTrue(roundEnded, "OnRoundEnded 이벤트가 호출되어야 한다.");
         }
     }

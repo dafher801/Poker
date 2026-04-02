@@ -9,6 +9,7 @@
 // BlindPositionCalculator, BettingRoundUsecase, WinnerResolver, PotManager 등
 // 하위 유스케이스에 위임하여 각 단계를 처리한다.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -66,25 +67,36 @@ namespace TexasHoldem.Usecase
             state.Phase = GamePhase.PreFlop;
             state.LastRaiseSize = state.Blinds.BigBlind;
 
-            broadcaster.OnRoundStarted(0, newDealer);
-            broadcaster.OnBlindsPosted(
-                state.Players[sbIndex].Id, state.Players[sbIndex].CurrentBet,
-                state.Players[bbIndex].Id, state.Players[bbIndex].CurrentBet);
+            var participantIndices = new List<int>();
+            for (int i = 0; i < state.Players.Count; i++)
+            {
+                if (state.Players[i].Status != PlayerStatus.Eliminated)
+                    participantIndices.Add(i);
+            }
+            broadcaster.Broadcast(new HandStartedEvent(
+                DateTime.UtcNow.Ticks, "", newDealer, participantIndices));
+            broadcaster.Broadcast(new BlindPostedEvent(
+                DateTime.UtcNow.Ticks, "", sbIndex, state.Players[sbIndex].CurrentBet, BlindType.Small));
+            broadcaster.Broadcast(new BlindPostedEvent(
+                DateTime.UtcNow.Ticks, "", bbIndex, state.Players[bbIndex].CurrentBet, BlindType.Big));
 
             // === Phase 2 — 딜링 ===
 
             var deck = new Deck();
             deck.Shuffle(random);
 
-            foreach (var player in state.Players)
+            for (int i = 0; i < state.Players.Count; i++)
             {
+                var player = state.Players[i];
                 if (player.Status == PlayerStatus.Active || player.Status == PlayerStatus.AllIn)
                 {
                     var card1 = deck.Draw();
                     var card2 = deck.Draw();
                     player.AddHoleCard(card1);
                     player.AddHoleCard(card2);
-                    broadcaster.OnHoleCardsDealt(player.Id, card1, card2);
+                    broadcaster.Broadcast(new CardsDealtEvent(
+                        DateTime.UtcNow.Ticks, "", CardDealType.HoleCard,
+                        new List<Card> { card1, card2 }, i));
                 }
             }
 
@@ -113,7 +125,8 @@ namespace TexasHoldem.Usecase
                 {
                     state.AddCommunityCard(card);
                 }
-                broadcaster.OnCommunityCardsDealt(GamePhase.Flop, flopCards);
+                broadcaster.Broadcast(new CardsDealtEvent(
+                    DateTime.UtcNow.Ticks, "", CardDealType.CommunityFlop, flopCards, -1));
 
                 ResetCurrentBetsForNewStreet(state);
                 var result = await _bettingRoundUsecase.RunBettingRound(state, actionProvider, broadcaster);
@@ -130,7 +143,8 @@ namespace TexasHoldem.Usecase
                 state.Phase = GamePhase.Turn;
                 var turnCard = deck.Draw();
                 state.AddCommunityCard(turnCard);
-                broadcaster.OnCommunityCardsDealt(GamePhase.Turn, new List<Card> { /* ... */ }
+                broadcaster.Broadcast(new CardsDealtEvent(
+                    DateTime.UtcNow.Ticks, "", CardDealType.CommunityTurn, new List<Card> { turnCard }, -1));
 
                 ResetCurrentBetsForNewStreet(state);
                 var result = await _bettingRoundUsecase.RunBettingRound(state, actionProvider, broadcaster);
@@ -147,7 +161,8 @@ namespace TexasHoldem.Usecase
                 state.Phase = GamePhase.River;
                 var riverCard = deck.Draw();
                 state.AddCommunityCard(riverCard);
-                broadcaster.OnCommunityCardsDealt(GamePhase.River, new List<Card> { /* ... */ }
+                broadcaster.Broadcast(new CardsDealtEvent(
+                    DateTime.UtcNow.Ticks, "", CardDealType.CommunityRiver, new List<Card> { riverCard }, -1));
 
                 ResetCurrentBetsForNewStreet(state);
                 var result = await _bettingRoundUsecase.RunBettingRound(state, actionProvider, broadcaster);
@@ -170,9 +185,10 @@ namespace TexasHoldem.Usecase
 
             if (activeOrAllInCount >= 2)
             {
-                var showdownResults = new List<(string PlayerId, HandRank Rank, IReadOnlyList<Card> BestFive)>();
-                foreach (var player in state.Players)
+                var showdownEntries = new List<ShowdownEntry>();
+                for (int i = 0; i < state.Players.Count; i++)
                 {
+                    var player = state.Players[i];
                     if (player.Status == PlayerStatus.Active || player.Status == PlayerStatus.AllIn)
                     {
                         var allCards = new List<Card>(player.HoleCards);
@@ -180,10 +196,12 @@ namespace TexasHoldem.Usecase
 
                         var bestFive = FindBestFiveCards(allCards);
                         var eval = HandEvaluator.Evaluate(new List<Card>(bestFive));
-                        showdownResults.Add((player.Id, eval.Rank, bestFive));
+                        showdownEntries.Add(new ShowdownEntry(
+                            i, player.HoleCards.AsReadOnly(), eval.Rank, false));
                     }
                 }
-                broadcaster.OnShowdown(showdownResults);
+                broadcaster.Broadcast(new ShowdownResultEvent(
+                    DateTime.UtcNow.Ticks, "", showdownEntries));
             }
 
             // 칩 지급
@@ -194,12 +212,15 @@ namespace TexasHoldem.Usecase
             }
 
             // 정산 이벤트
-            var settlements = new List<(string PlayerId, int ChipDelta)>();
+            var awards = new List<PotAward>();
             foreach (var (playerId, amount) in payouts)
             {
-                settlements.Add((playerId, amount));
+                int seatIdx = state.Players.FindIndex(p => /* ... */;
+                awards.Add(new PotAward(seatIdx, amount, "Main"));
             }
-            broadcaster.OnRoundEnded(settlements);
+            broadcaster.Broadcast(new HandEndedEvent(
+                DateTime.UtcNow.Ticks, "", awards,
+                earlyWin ? HandEndReason.LastManStanding : HandEndReason.Showdown));
 
             // === Phase 5 — 정리 ===
 
