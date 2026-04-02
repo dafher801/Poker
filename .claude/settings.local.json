@@ -10,7 +10,8 @@
       "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/Gateway/IGameEventBroadcaster.cs\")",
       "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/Gateway/StubGameEventBroadcaster.cs\")",
       "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Tests/EditMode/GatewayStubTests.cs\")",
-      "Bash(dotnet test:*)"
+      "Bash(dotnet test:*)",
+      "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Tests/EditMode/GameRoundTests_DealerFlow.cs\")"
     ]
   }
 }
