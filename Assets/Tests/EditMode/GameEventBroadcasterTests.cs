@@ -5,6 +5,8 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
 using TexasHoldem.Director;
 using TexasHoldem.Entity;
 
@@ -98,6 +100,7 @@ namespace Poker.EditMode.Tests
             _broadcaster.Subscribe<PhaseChangedEvent>(e => { throw new InvalidOperationException("test exception"); });
             _broadcaster.Subscribe<PhaseChangedEvent>(e => thirdCalled = true);
 
+            LogAssert.Expect(LogType.Exception, "InvalidOperationException: test exception");
             _broadcaster.Publish(new PhaseChangedEvent(1000L, "hand-1", RoundPhase.PreFlop, RoundPhase.Flop));
 
             Assert.IsTrue(firstCalled);
