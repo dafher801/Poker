@@ -90,10 +90,10 @@ namespace TexasHoldem.Tests.EditMode
             //   P1 Check
             // PostFlop (Flop/Turn/River): BB(=비딜러=P1)가 선액션
             //   P1 Check, P0 Check
-            var actions = new Dictionary<string, Queue<PlayerAction>>
+            var actions = new Dictionary<int, Queue<PlayerAction>>
             {
                 {
-                    "P0", new Queue<PlayerAction>(new[]
+                    0, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P0", ActionType.Call, 10),    // PreFlop (SB → Call to match BB)
                         new PlayerAction("P0", ActionType.Check, 0),   // Flop
@@ -102,7 +102,7 @@ namespace TexasHoldem.Tests.EditMode
                     })
                 },
                 {
-                    "P1", new Queue<PlayerAction>(new[]
+                    1, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P1", ActionType.Check, 0),   // PreFlop (BB, no raise → Check)
                         new PlayerAction("P1", ActionType.Check, 0),   // Flop
@@ -215,16 +215,16 @@ namespace TexasHoldem.Tests.EditMode
             var fixedDeck1 = BuildFixedDeck(drawOrder1);
             var random1 = new FixedRandomSource(fixedDeck1);
 
-            var actions1 = new Dictionary<string, Queue<PlayerAction>>
+            var actions1 = new Dictionary<int, Queue<PlayerAction>>
             {
                 {
-                    "P0", new Queue<PlayerAction>(new[]
+                    0, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P0", ActionType.Fold, 0),      // PreFlop
                     })
                 },
                 {
-                    "P1", new Queue<PlayerAction>(new[]
+                    1, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P1", ActionType.Call, 10),     // PreFlop (SB → Call 10)
                         new PlayerAction("P1", ActionType.Check, 0),    // Flop
@@ -233,7 +233,7 @@ namespace TexasHoldem.Tests.EditMode
                     })
                 },
                 {
-                    "P2", new Queue<PlayerAction>(new[]
+                    2, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P2", ActionType.Check, 0),    // PreFlop (BB)
                         new PlayerAction("P2", ActionType.Check, 0),    // Flop
@@ -267,22 +267,22 @@ namespace TexasHoldem.Tests.EditMode
 
             var random2 = new FixedRandomSource(); // 기본 덱 순서 (조기 종료이므로 커뮤니티 불필요)
 
-            var actions2 = new Dictionary<string, Queue<PlayerAction>>
+            var actions2 = new Dictionary<int, Queue<PlayerAction>>
             {
                 {
-                    "P0", new Queue<PlayerAction>(new[]
+                    0, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P0", ActionType.Fold, 0),
                     })
                 },
                 {
-                    "P1", new Queue<PlayerAction>(new[]
+                    1, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P1", ActionType.Raise, 100),
                     })
                 },
                 {
-                    "P2", new Queue<PlayerAction>(new[]
+                    2, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P2", ActionType.Fold, 0),
                     })

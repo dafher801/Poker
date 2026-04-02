@@ -105,10 +105,10 @@ namespace TexasHoldem.Tests.EditMode
             // 액션 설정 (PlayerId별 큐)
             // PreFlop: P0 Call(20), P1 Call(20), P2 Call(10), P3 Check
             // Flop/Turn/River: 전원 Check (PostFlop 순서: P2, P3, P0, P1)
-            var actions = new Dictionary<string, Queue<PlayerAction>>
+            var actions = new Dictionary<int, Queue<PlayerAction>>
             {
                 {
-                    "P0", new Queue<PlayerAction>(new[]
+                    0, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P0", ActionType.Call, 20),  // PreFlop
                         new PlayerAction("P0", ActionType.Check, 0),  // Flop
@@ -117,7 +117,7 @@ namespace TexasHoldem.Tests.EditMode
                     })
                 },
                 {
-                    "P1", new Queue<PlayerAction>(new[]
+                    1, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P1", ActionType.Call, 20),  // PreFlop
                         new PlayerAction("P1", ActionType.Check, 0),  // Flop
@@ -126,7 +126,7 @@ namespace TexasHoldem.Tests.EditMode
                     })
                 },
                 {
-                    "P2", new Queue<PlayerAction>(new[]
+                    2, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P2", ActionType.Call, 10),  // PreFlop (SB already 10)
                         new PlayerAction("P2", ActionType.Check, 0),  // Flop
@@ -135,7 +135,7 @@ namespace TexasHoldem.Tests.EditMode
                     })
                 },
                 {
-                    "P3", new Queue<PlayerAction>(new[]
+                    3, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P3", ActionType.Check, 0),  // PreFlop (BB, no raise)
                         new PlayerAction("P3", ActionType.Check, 0),  // Flop
@@ -208,28 +208,28 @@ namespace TexasHoldem.Tests.EditMode
             var random = new FixedRandomSource(); // 무작동 모드: 기본 순서 유지
 
             // 액션: P0 Raise(100), P1 Fold, P2 Fold, P3 Fold
-            var actions = new Dictionary<string, Queue<PlayerAction>>
+            var actions = new Dictionary<int, Queue<PlayerAction>>
             {
                 {
-                    "P0", new Queue<PlayerAction>(new[]
+                    0, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P0", ActionType.Raise, 100)
                     })
                 },
                 {
-                    "P1", new Queue<PlayerAction>(new[]
+                    1, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P1", ActionType.Fold, 0)
                     })
                 },
                 {
-                    "P2", new Queue<PlayerAction>(new[]
+                    2, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P2", ActionType.Fold, 0)
                     })
                 },
                 {
-                    "P3", new Queue<PlayerAction>(new[]
+                    3, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P3", ActionType.Fold, 0)
                     })

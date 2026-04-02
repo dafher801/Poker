@@ -97,22 +97,22 @@ namespace TexasHoldem.Tests.EditMode
             // P2: Call(190) → currentBet=200 (10+190)
             // P0: AllIn(80칩 전부) → currentBet=100 (20+80), 레이즈 아님(100<200)
             // Flop/Turn/River: P2만 Active → Check
-            var actions = new Dictionary<string, Queue<PlayerAction>>
+            var actions = new Dictionary<int, Queue<PlayerAction>>
             {
                 {
-                    "P0", new Queue<PlayerAction>(new[]
+                    0, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P0", ActionType.AllIn, 0),   // PreFlop — 80칩 올인
                     })
                 },
                 {
-                    "P1", new Queue<PlayerAction>(new[]
+                    1, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P1", ActionType.AllIn, 0),   // PreFlop — 200칩 올인
                     })
                 },
                 {
-                    "P2", new Queue<PlayerAction>(new[]
+                    2, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P2", ActionType.Call, 190),   // PreFlop — Call to match 200
                         new PlayerAction("P2", ActionType.Check, 0),   // Flop
@@ -214,10 +214,10 @@ namespace TexasHoldem.Tests.EditMode
             // Flop: P0 Check, P1 Check
             // Turn: P0 Check, P1 Check
             // River: P0 Check, P1 Check
-            var actions = new Dictionary<string, Queue<PlayerAction>>
+            var actions = new Dictionary<int, Queue<PlayerAction>>
             {
                 {
-                    "P0", new Queue<PlayerAction>(new[]
+                    0, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P0", ActionType.Check, 0),   // PreFlop (BB, no raise)
                         new PlayerAction("P0", ActionType.Check, 0),   // Flop
@@ -226,7 +226,7 @@ namespace TexasHoldem.Tests.EditMode
                     })
                 },
                 {
-                    "P1", new Queue<PlayerAction>(new[]
+                    1, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P1", ActionType.Call, 10),    // PreFlop (SB→Call 10 to match BB)
                         new PlayerAction("P1", ActionType.Check, 0),   // Flop

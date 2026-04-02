@@ -133,41 +133,41 @@ namespace TexasHoldem.Tests.EditMode
             //
             // 폴드한 플레이어들의 베팅도 팟에 포함됨:
             // P1(SB): 25, P2(BB): 50, P3: 150 → 총 225가 추가로 메인 팟에 합산
-            var actions = new Dictionary<string, Queue<PlayerAction>>
+            var actions = new Dictionary<int, Queue<PlayerAction>>
             {
                 {
-                    "P0", new Queue<PlayerAction>(new[]
+                    0, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P0", ActionType.AllIn, 0),      // PreFlop — 500칩 올인
                     })
                 },
                 {
-                    "P1", new Queue<PlayerAction>(new[]
+                    1, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P1", ActionType.Fold, 0),       // PreFlop
                     })
                 },
                 {
-                    "P2", new Queue<PlayerAction>(new[]
+                    2, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P2", ActionType.Fold, 0),       // PreFlop
                     })
                 },
                 {
-                    "P3", new Queue<PlayerAction>(new[]
+                    3, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P3", ActionType.Raise, 150),    // PreFlop
                         new PlayerAction("P3", ActionType.Fold, 0),       // PreFlop — P7 AllIn 후 재액션
                     })
                 },
                 {
-                    "P4", new Queue<PlayerAction>(new[]
+                    4, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P4", ActionType.Fold, 0),       // PreFlop
                     })
                 },
                 {
-                    "P5", new Queue<PlayerAction>(new[]
+                    5, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P5", ActionType.Call, 150),     // PreFlop — P3의 Raise에 Call
                         new PlayerAction("P5", ActionType.Call, 850),     // PreFlop — P7의 AllIn에 Call
@@ -177,25 +177,25 @@ namespace TexasHoldem.Tests.EditMode
                     })
                 },
                 {
-                    "P6", new Queue<PlayerAction>(new[]
+                    6, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P6", ActionType.Fold, 0),       // PreFlop
                     })
                 },
                 {
-                    "P7", new Queue<PlayerAction>(new[]
+                    7, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P7", ActionType.AllIn, 0),      // PreFlop — 1000칩 올인
                     })
                 },
                 {
-                    "P8", new Queue<PlayerAction>(new[]
+                    8, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P8", ActionType.Fold, 0),       // PreFlop
                     })
                 },
                 {
-                    "P9", new Queue<PlayerAction>(new[]
+                    9, new Queue<PlayerAction>(new[]
                     {
                         new PlayerAction("P9", ActionType.Fold, 0),       // PreFlop
                     })
