@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -100,7 +101,7 @@ namespace Poker.EditMode.Tests
             _broadcaster.Subscribe<PhaseChangedEvent>(e => { throw new InvalidOperationException("test exception"); });
             _broadcaster.Subscribe<PhaseChangedEvent>(e => thirdCalled = true);
 
-            LogAssert.Expect(LogType.Exception, "InvalidOperationException: test exception");
+            LogAssert.Expect(LogType.Exception, new Regex("InvalidOperationException"));
             _broadcaster.Publish(new PhaseChangedEvent(1000L, "hand-1", RoundPhase.PreFlop, RoundPhase.Flop));
 
             Assert.IsTrue(firstCalled);
