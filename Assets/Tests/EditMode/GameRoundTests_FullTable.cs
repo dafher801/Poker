@@ -72,41 +72,40 @@ namespace TexasHoldem.Tests.EditMode
 
             // 고정 덱 설정
             // 홀카드 (P0~P9 각 2장 = 20장) + 커뮤니티 5장 = 25장
-            // P0: A♠A♥ (최고 — Pair of Aces + board = Full House Aces over Kings)
-            // P7: K♠K♥ (두 번째 — Pair of Kings + board = Full House Kings over ?)
-            // P5: Q♠Q♥ (세 번째 — Pair of Queens)
-            // 나머지는 약한 카드
-            // 커뮤니티: A♣ K♣ K♦ 2♦ 3♣
-            // P0: Full House (AAA KK), P7: Full House (KKK AA), P5: Two Pair (QQ KK) — P0 > P7 > P5
+            // P0: A♠A♥ → Pair of Aces (최고)
+            // P7: K♠K♥ → Pair of Kings (두 번째)
+            // P5: Q♠Q♥ → Pair of Queens (세 번째)
+            // 나머지 플레이어는 페어 없는 약한 카드
+            // 커뮤니티: 2♣ 3♦ 7♥ 9♠ J♦ (페어·스트레이트·플러시 불가)
             var drawOrder = new Card[]
             {
                 // 홀카드 (P0 card1, P0 card2, P1 card1, P1 card2, ..., P9 card1, P9 card2)
                 new Card(Suit.Spade, Rank.Ace),       // P0 hole 1
                 new Card(Suit.Heart, Rank.Ace),       // P0 hole 2
-                new Card(Suit.Heart, Rank.Two),       // P1 hole 1
-                new Card(Suit.Club, Rank.Four),       // P1 hole 2
-                new Card(Suit.Heart, Rank.Five),      // P2 hole 1
-                new Card(Suit.Club, Rank.Six),        // P2 hole 2
-                new Card(Suit.Heart, Rank.Seven),     // P3 hole 1
-                new Card(Suit.Club, Rank.Eight),      // P3 hole 2
-                new Card(Suit.Heart, Rank.Nine),      // P4 hole 1
-                new Card(Suit.Club, Rank.Ten),        // P4 hole 2
+                new Card(Suit.Heart, Rank.Four),      // P1 hole 1
+                new Card(Suit.Heart, Rank.Five),      // P1 hole 2
+                new Card(Suit.Heart, Rank.Six),       // P2 hole 1
+                new Card(Suit.Club, Rank.Eight),      // P2 hole 2
+                new Card(Suit.Heart, Rank.Ten),       // P3 hole 1
+                new Card(Suit.Club, Rank.Four),       // P3 hole 2
+                new Card(Suit.Club, Rank.Five),       // P4 hole 1
+                new Card(Suit.Club, Rank.Six),        // P4 hole 2
                 new Card(Suit.Spade, Rank.Queen),     // P5 hole 1
                 new Card(Suit.Heart, Rank.Queen),     // P5 hole 2
-                new Card(Suit.Heart, Rank.Four),      // P6 hole 1
-                new Card(Suit.Diamond, Rank.Six),     // P6 hole 2
+                new Card(Suit.Heart, Rank.Eight),     // P6 hole 1
+                new Card(Suit.Club, Rank.Ten),        // P6 hole 2
                 new Card(Suit.Spade, Rank.King),      // P7 hole 1
                 new Card(Suit.Heart, Rank.King),      // P7 hole 2
-                new Card(Suit.Diamond, Rank.Seven),   // P8 hole 1
-                new Card(Suit.Diamond, Rank.Eight),   // P8 hole 2
-                new Card(Suit.Diamond, Rank.Nine),    // P9 hole 1
-                new Card(Suit.Diamond, Rank.Ten),     // P9 hole 2
+                new Card(Suit.Diamond, Rank.Four),    // P8 hole 1
+                new Card(Suit.Diamond, Rank.Five),    // P8 hole 2
+                new Card(Suit.Diamond, Rank.Six),     // P9 hole 1
+                new Card(Suit.Diamond, Rank.Eight),   // P9 hole 2
                 // 커뮤니티
-                new Card(Suit.Club, Rank.Ace),        // Flop 1
-                new Card(Suit.Club, Rank.King),       // Flop 2
-                new Card(Suit.Diamond, Rank.King),    // Flop 3
-                new Card(Suit.Diamond, Rank.Two),     // Turn
-                new Card(Suit.Club, Rank.Three),      // River
+                new Card(Suit.Club, Rank.Two),        // Flop 1
+                new Card(Suit.Diamond, Rank.Three),   // Flop 2
+                new Card(Suit.Heart, Rank.Seven),     // Flop 3
+                new Card(Suit.Spade, Rank.Nine),      // Turn
+                new Card(Suit.Diamond, Rank.Jack),    // River
             };
 
             var fixedDeck = BuildFixedDeck(drawOrder);
@@ -217,21 +216,17 @@ namespace TexasHoldem.Tests.EditMode
             bool showdownCalled = log.Any(e => e.EventName == "OnShowdown");
             Assert.IsTrue(showdownCalled, "쇼다운 이벤트가 호출되어야 한다.");
 
-            // 검증 2: 메인 팟 → P0(Full House AAA KK) 수령
-            // 메인 팟: P0(500) + P5(500 중 매칭분) + P7(500 중 매칭분) + 폴드 플레이어 베팅(P1:25, P2:50, P3:150) = 1500 + 225 = 1725
-            // 사이드 팟: (1000-500) × 2 = 1000 → P7(Full House KKK AA) 수령
-            // P0 최종: 0 + 메인 팟
-            // P7 최종: 0 + 사이드 팟
-            // P5 최종: 1000 - 1000 = 0 (전부 베팅)
-            // 정확한 팟 크기는 PotManager 구현에 따라 달라질 수 있으므로 칩 보존 법칙으로 검증
+            // 검증 2: 메인 팟 → P0(Pair of Aces, 최고) 수령
+            // 사이드 팟 → P7(Pair of Kings, 두 번째) 수령
+            // P5(Pair of Queens, 세 번째)는 팟 수령 없음
 
             // 검증 3: P0이 메인 팟 수령 (P0 칩 > 0)
             Assert.IsTrue(state.Players[0].Chips > 0,
-                "P0(Full House AAA KK)이 메인 팟을 수령하여 칩이 0보다 커야 한다.");
+                "P0(Pair of Aces)이 메인 팟을 수령하여 칩이 0보다 커야 한다.");
 
             // 검증 4: P7이 사이드 팟 수령 (P7 칩 > 0)
             Assert.IsTrue(state.Players[7].Chips > 0,
-                "P7(Full House KKK AA)이 사이드 팟을 수령하여 칩이 0보다 커야 한다.");
+                "P7(Pair of Kings)이 사이드 팟을 수령하여 칩이 0보다 커야 한다.");
 
             // 검증 5: 최종 10명 칩 합계 = 7500 (칩 보존 법칙)
             int totalChips = state.Players.Sum(p => p.Chips);
