@@ -41,8 +41,11 @@ namespace TexasHoldem.Director
         /// <returns>유저가 선택한 PlayerAction</returns>
         public async Task<PlayerAction> HandleTurnAsync(GameState state, string playerId, int seatIndex, CancellationToken ct)
         {
+            UnityEngine.Debug.Log($"[LocalPlayerAction] HandleTurnAsync 진입 - playerId={playerId}, seat={seatIndex}");
+
             // (1) ActionValidationUsecase로 PlayerActionContext 생성
             PlayerActionContext ctx = _actionValidationUsecase.BuildActionContext(state, playerId);
+            UnityEngine.Debug.Log($"[LocalPlayerAction] ActionContext 생성 완료 - ValidActions=[{string.Join(",", ctx.ValidActions)}], Call={ctx.CurrentBetToCall}, MinRaise={ctx.MinRaiseAmount}, MaxRaise={ctx.MaxRaiseAmount}");
 
             // (2) View의 OnActionSelected 콜백 구독
             Action<ActionType, int> callback = null;
@@ -70,7 +73,9 @@ namespace TexasHoldem.Director
             try
             {
                 // (3) ActionPanelView.Show(ctx) 호출하여 UI 표시
+                UnityEngine.Debug.Log($"[LocalPlayerAction] ActionPanelView.Show() 호출 전 - panelView active={_actionPanelView.gameObject.activeInHierarchy}");
                 _actionPanelView.Show(ctx);
+                UnityEngine.Debug.Log("[LocalPlayerAction] ActionPanelView.Show() 호출 완료 - 유저 입력 대기 시작");
 
                 // (4) Gateway.RequestActionAsync()를 await하여 결과 수신
                 var legalActionsList = new System.Collections.Generic.List<ActionType>(ctx.ValidActions);

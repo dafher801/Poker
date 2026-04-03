@@ -42,6 +42,7 @@ namespace TexasHoldem.View
 
         private void Awake()
         {
+            Debug.Log("[ActionPanelView] Awake - 버튼 리스너 등록 시작");
             _foldButton.onClick.AddListener(OnFoldClicked);
             _checkButton.onClick.AddListener(OnCheckClicked);
             _callButton.onClick.AddListener(OnCallClicked);
@@ -112,26 +113,31 @@ namespace TexasHoldem.View
 
         private void OnFoldClicked()
         {
+            Debug.Log("[ActionPanelView] Fold 버튼 클릭됨");
             OnActionSelected?.Invoke(ActionType.Fold, 0);
         }
 
         private void OnCheckClicked()
         {
+            Debug.Log("[ActionPanelView] Check 버튼 클릭됨");
             OnActionSelected?.Invoke(ActionType.Check, 0);
         }
 
         private void OnCallClicked()
         {
+            Debug.Log("[ActionPanelView] Call 버튼 클릭됨");
             OnActionSelected?.Invoke(ActionType.Call, 0);
         }
 
         private void OnRaiseClicked()
         {
+            Debug.Log($"[ActionPanelView] Raise 버튼 클릭됨 (amount: {_currentRaiseValue})");
             OnActionSelected?.Invoke(ActionType.Raise, _currentRaiseValue);
         }
 
         private void OnSliderValueChanged(float value)
         {
+            Debug.Log($"[ActionPanelView] 슬라이더 값 변경: {value}");
             _currentRaiseValue = Mathf.RoundToInt(value);
             UpdateRaiseLabels(_currentRaiseValue);
         }

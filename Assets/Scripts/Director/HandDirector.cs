@@ -274,6 +274,8 @@ namespace TexasHoldem.Director
             if (_handEnded) return;
             ct.ThrowIfCancellationRequested();
 
+            UnityEngine.Debug.Log($"[HandDirector] RunBettingRoundAsync 시작 - phase={phase}");
+
             // 프리플롭에서는 PhaseChanged 이벤트 발행
             if (phase == GamePhase.PreFlop)
             {
@@ -285,6 +287,7 @@ namespace TexasHoldem.Director
             // 쇼다운 스킵 체크
             if (_roundEndEvaluator.ShouldSkipToShowdown(_state.Players))
             {
+                UnityEngine.Debug.Log("[HandDirector] 쇼다운 스킵 - 베팅 불필요");
                 CollectBetsIntoPot();
                 await _stateMachine.SkipToShowdown();
                 return;
@@ -292,9 +295,11 @@ namespace TexasHoldem.Director
 
             // 액션 순서 결정
             var actionOrder = _turnOrderResolver.ResolveOrder(_state.Players, _state.DealerIndex, phase);
+            UnityEngine.Debug.Log($"[HandDirector] 액션 순서: [{string.Join(",", actionOrder)}]");
 
             if (actionOrder.Count == 0)
             {
+                UnityEngine.Debug.Log("[HandDirector] 액션할 플레이어 없음 - 라운드 종료");
                 // 액션할 플레이어가 없으면 라운드 종료
                 return;
             }
@@ -339,6 +344,8 @@ namespace TexasHoldem.Director
                         legalActions.MinRaiseAmount,
                         legalActions.MaxRaiseAmount,
                         30f));
+
+                    UnityEngine.Debug.Log($"[HandDirector] 좌석 {seatIndex} 액션 요청 - legalActions=[{string.Join(",", legalActions.AvailableActions)}], status={player.Status}");
 
                     // 플레이어 액션 요청
                     var action = await _actionProvider.RequestActionAsync(
