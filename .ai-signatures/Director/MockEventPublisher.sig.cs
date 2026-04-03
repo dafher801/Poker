@@ -11,11 +11,15 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TexasHoldem.Entity;
+using TexasHoldem.View;
 
 namespace TexasHoldem.Director
 {
     public class MockEventPublisher : MonoBehaviour, IGameEventBroadcaster
     {
+        [Tooltip("GameTableView 참조. 미할당 시 씬에서 자동 검색한다.")]
+        [SerializeField] private GameTableView _gameTableView;
+
         private readonly LocalGameEventBroadcaster _broadcaster = new LocalGameEventBroadcaster();
 
         private const string MockHandId = "MOCK-HAND-001";
@@ -37,6 +41,20 @@ namespace TexasHoldem.Director
 
         private void Start() { /* ... */ }
         {
+            if (_gameTableView == null)
+            {
+                _gameTableView = FindFirstObjectByType<GameTableView>();
+            }
+
+            if (_gameTableView != null)
+            {
+                _gameTableView.SetBroadcaster(this);
+            }
+            else
+            {
+                Debug.LogWarning("[MockEventPublisher] GameTableView를 찾을 수 없습니다.");
+            }
+
             StartCoroutine(RunMockScenario());
         }
 
