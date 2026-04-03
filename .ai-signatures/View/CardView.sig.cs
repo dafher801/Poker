@@ -5,7 +5,6 @@
 // SetCard로 카드 데이터를 설정하고, SetFaceUp/FlipWithAnimation으로 앞뒤 전환을 제어한다.
 // 초기 상태는 비활성(GameObject.SetActive(false))이다.
 
-using System.Collections;
 using UnityEngine;
 using TexasHoldem.Entity;
 
@@ -62,8 +61,8 @@ namespace TexasHoldem.View
         }
 
         /// <summary>
-        /// 뒤집기 애니메이션을 실행한다. Y축 스케일 기반으로 0→중간(스프라이트 교체)→원복.
-        /// CardAnimator가 구현되면 해당 클래스로 위임할 수 있다.
+        /// 뒤집기 애니메이션을 실행한다. CardAnimator에 위임하여 X축 스케일 기반으로 뒤집기를 수행한다.
+        /// 중간 지점에서 SetFaceUp을 호출하여 스프라이트를 교체한다.
         /// </summary>
         public void FlipWithAnimation(bool toFaceUp, float duration = 0.3f) { /* ... */ }
         {
@@ -72,7 +71,13 @@ namespace TexasHoldem.View
                 StopCoroutine(_flipCoroutine);
             }
 
-            _flipCoroutine = StartCoroutine(FlipCoroutine(toFaceUp, duration));
+            _flipCoroutine = CardAnimator.AnimateFlip(
+                this,
+                transform,
+                () => /* ... */;
+                duration,
+                () => /* ... */;
+            );
         }
 
         /// <summary>
@@ -108,39 +113,5 @@ namespace TexasHoldem.View
         public Rank Rank => /* ... */;
         public Suit Suit => /* ... */;
 
-        private IEnumerator FlipCoroutine(bool toFaceUp, float duration) { /* ... */ }
-        {
-            float halfDuration = duration * 0.5f;
-            Vector3 originalScale = transform.localScale;
-            Vector3 flatScale = new Vector3(0f, originalScale.y, originalScale.z);
-
-            // 첫 번째 절반: 현재 면을 접는다
-            float elapsed = 0f;
-            while (elapsed < halfDuration)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.Clamp01(elapsed / halfDuration);
-                transform.localScale = Vector3.Lerp(originalScale, flatScale, t);
-                yield return null;
-            }
-
-            transform.localScale = flatScale;
-
-            // 중간 지점: 스프라이트 교체
-            SetFaceUp(toFaceUp);
-
-            // 두 번째 절반: 새 면을 펼친다
-            elapsed = 0f;
-            while (elapsed < halfDuration)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.Clamp01(elapsed / halfDuration);
-                transform.localScale = Vector3.Lerp(flatScale, originalScale, t);
-                yield return null;
-            }
-
-            transform.localScale = originalScale;
-            _flipCoroutine = null;
-        }
     }
 }
