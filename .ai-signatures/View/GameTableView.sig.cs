@@ -54,6 +54,22 @@ namespace TexasHoldem.View
         public PlayerSlotView[] PlayerSlots => /* ... */;
 
         /// <summary>
+        /// 새 핸드 시작 시 이전 핸드의 모든 카드(커뮤니티 + 홀카드)를 정리한다.
+        /// </summary>
+        public void ClearAllCards() { /* ... */ }
+        {
+            if (_communityCards != null)
+            {
+                _communityCards.ClearAll();
+            }
+
+            if (_holeCards != null)
+            {
+                _holeCards.ClearAllHoleCards();
+            }
+        }
+
+        /// <summary>
         /// 활성 플레이어 수에 맞게 슬롯을 재배치한다.
         /// activeCount 이내의 슬롯은 활성화하고 위치를 재계산, 나머지는 비활성화한다.
         /// </summary>

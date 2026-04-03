@@ -269,9 +269,14 @@ namespace TexasHoldem.Director
             broadcaster.Subscribe<PhaseChangedEvent>(e => /* ... */;
 
             // View 이벤트 브릿지: 로직 이벤트 → View 이벤트 변환
-            // 핸드 시작 시 플레이어 좌석 정보 발행
+            // 핸드 시작 시 이전 카드 정리 및 플레이어 좌석 정보 발행
             broadcaster.Subscribe<HandStartedEvent>(e { /* ... */ }
             {
+                if (_gameTableView != null)
+                {
+                    _gameTableView.ClearAllCards();
+                }
+
                 foreach (int seat in e.ParticipantSeatIndices)
                 {
                     var p = players[seat];
