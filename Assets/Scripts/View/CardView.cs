@@ -68,6 +68,7 @@ namespace TexasHoldem.View
             if (_flipCoroutine != null)
             {
                 StopCoroutine(_flipCoroutine);
+                transform.localScale = Vector3.one;
             }
 
             _flipCoroutine = CardAnimator.AnimateFlip(
@@ -103,6 +104,8 @@ namespace TexasHoldem.View
                 StopCoroutine(_flipCoroutine);
                 _flipCoroutine = null;
             }
+
+            transform.localScale = Vector3.one;
 
             gameObject.SetActive(false);
         }
