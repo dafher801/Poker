@@ -470,15 +470,16 @@ namespace TexasHoldem.Director
 
         private void CollectBetsIntoPot()
         {
-            // PlayerBetInfo 목록 생성 후 PotManager로 수집
+            // PlayerBetInfo 목록 생성 후 PotManager로 수집, Ledger에서도 차감
             var bets = new List<PlayerBetInfo>();
             for (int i = 0; i < _state.Players.Count; i++)
             {
                 var player = _state.Players[i];
                 if (player.CurrentBet > 0)
                 {
+                    _ledger.DeductChips(i, player.CurrentBet);
                     bets.Add(new PlayerBetInfo(
-                        player.Id,
+                        i.ToString(),
                         player.CurrentBet,
                         player.Status == PlayerStatus.AllIn,
                         player.Status == PlayerStatus.Folded));

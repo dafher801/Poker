@@ -54,7 +54,7 @@ namespace TexasHoldem.View
         public static IEnumerator DealCoroutine(Transform card, Vector3 fromPosition, Vector3 toPosition, float duration = 0.4f, Action onComplete = null) { /* ... */ }
         {
             card.position = fromPosition;
-            Vector3 targetScale = card.localScale;
+            Vector3 targetScale = Vector3.one;
             card.localScale = Vector3.zero;
 
             float elapsed = 0f;
@@ -84,7 +84,7 @@ namespace TexasHoldem.View
         public static IEnumerator FlipCoroutine(Transform card, Action onHalfway, float duration = 0.3f, Action onComplete = null) { /* ... */ }
         {
             float halfDuration = duration * 0.5f;
-            Vector3 originalScale = card.localScale;
+            Vector3 originalScale = Vector3.one;
             Vector3 flatScale = new Vector3(0f, originalScale.y, originalScale.z);
 
             // 첫 번째 절반: 현재 면을 접는다
