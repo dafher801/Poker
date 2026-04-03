@@ -53,6 +53,38 @@ namespace TexasHoldem.View
         /// </summary>
         public PlayerSlotView[] PlayerSlots => /* ... */;
 
+        /// <summary>
+        /// 활성 플레이어 수에 맞게 슬롯을 재배치한다.
+        /// activeCount 이내의 슬롯은 활성화하고 위치를 재계산, 나머지는 비활성화한다.
+        /// </summary>
+        public void SetActiveSlotCount(int activeCount) { /* ... */ }
+        {
+            if (_layoutManager != null)
+            {
+                _layoutManager.SetActivePlayerCount(activeCount);
+            }
+
+            for (int i = 0; i < _playerSlots.Length; i++)
+            {
+                if (_playerSlots[i] == null) continue;
+
+                if (i < activeCount)
+                {
+                    _playerSlots[i].gameObject.SetActive(true);
+                    if (_layoutManager != null)
+                    {
+                        _playerSlots[i].transform.position = _layoutManager.GetSeatPosition(i);
+                    }
+                    _playerSlots[i].Initialize(i);
+                }
+                else
+                {
+                    _playerSlots[i].ClearSlot();
+                    _playerSlots[i].gameObject.SetActive(false);
+                }
+            }
+        }
+
         private void OnEnable() { /* ... */ }
         {
             if (_broadcaster != null)
