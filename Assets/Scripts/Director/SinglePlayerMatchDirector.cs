@@ -14,6 +14,7 @@ using TexasHoldem.Entity;
 using TexasHoldem.Gateway;
 using TexasHoldem.Usecase;
 using TexasHoldem.View;
+using Poker.Entity;
 using Poker.Usecase;
 
 namespace TexasHoldem.Director
@@ -31,6 +32,7 @@ namespace TexasHoldem.Director
         [SerializeField] private TableLayoutManager _layoutManager;
         [SerializeField] private GameTableView _gameTableView;
         [SerializeField] private ActionPanelView _actionPanelView;
+        [SerializeField] private ResultView _resultView;
 
         private int _handsCompleted;
         private int _dealerIndex;
@@ -245,6 +247,49 @@ namespace TexasHoldem.Director
 
             Debug.Log($"\n=== 싱글플레이 매치 종료 (완료 핸드: {_handsCompleted}) ===");
             PrintChipStatus(players);
+
+            // ResultView 표시
+            if (_resultView != null)
+            {
+                var result = BuildSessionResult(players);
+                bool isHumanEliminated = players[0].Chips <= 0;
+
+                var returnTcs = new TaskCompletionSource<bool>();
+
+                void onReturn()
+                {
+                    _resultView.OnReturnToLobbyClicked -= onReturn;
+                    returnTcs.TrySetResult(true);
+                }
+
+                _resultView.OnReturnToLobbyClicked += onReturn;
+                _resultView.ShowResult(result, isHumanEliminated);
+
+                await returnTcs.Task;
+                _resultView.Hide();
+            }
+        }
+
+        private SessionResult BuildSessionResult(List<PlayerData> players)
+        {
+            // 칩 내림차순 정렬하여 순위 결정
+            var sorted = new List<(int seatIndex, PlayerData player)>();
+            for (int i = 0; i < players.Count; i++)
+            {
+                sorted.Add((i, players[i]));
+            }
+            sorted.Sort((a, b) => b.player.Chips.CompareTo(a.player.Chips));
+
+            var rankings = new List<PlayerRanking>();
+            for (int i = 0; i < sorted.Count; i++)
+            {
+                var p = sorted[i].player;
+                int? eliminatedAtHand = p.Chips <= 0 ? (int?)_handsCompleted : null;
+                rankings.Add(new PlayerRanking(i + 1, p.Name, p.Chips, eliminatedAtHand));
+            }
+
+            string winnerId = rankings[0].PlayerId;
+            return new SessionResult(winnerId, rankings);
         }
 
         private int FindNextActiveDealer(List<PlayerData> players, int currentDealer)

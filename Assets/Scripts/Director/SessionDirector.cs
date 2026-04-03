@@ -42,6 +42,7 @@ namespace TexasHoldem.Director
         private readonly string _humanPlayerId;
         private readonly LobbyDirector _lobbyDirector;
         private readonly GameTableView _gameTableView;
+        private readonly ResultView _resultView;
         private readonly Action<GameState> _onGameStateCreated;
 
         private bool _disposed;
@@ -63,6 +64,7 @@ namespace TexasHoldem.Director
             string humanPlayerId,
             LobbyDirector lobbyDirector,
             GameTableView gameTableView,
+            ResultView resultView,
             Action<GameState> onGameStateCreated)
         {
             _sessionState = sessionState ?? throw new ArgumentNullException(nameof(sessionState));
@@ -81,6 +83,7 @@ namespace TexasHoldem.Director
             _humanPlayerId = humanPlayerId ?? throw new ArgumentNullException(nameof(humanPlayerId));
             _lobbyDirector = lobbyDirector;
             _gameTableView = gameTableView;
+            _resultView = resultView;
             _onGameStateCreated = onGameStateCreated;
         }
 
@@ -190,8 +193,29 @@ namespace TexasHoldem.Director
                         Debug.Log($"  #{ranking.Rank} {ranking.PlayerId} — 칩: {ranking.FinalChips}{eliminatedInfo}");
                     }
 
-                    // TODO: ResultView 표시 (Task 2-6-9에서 구현)
-                    // ResultView에서 '로비 복귀' 이벤트 수신 시 LobbyDirector.ReturnToLobby() 호출
+                    // ResultView 표시 및 로비 복귀 이벤트 대기
+                    bool isHumanEliminated = _sessionState.Eliminated.ContainsKey(_humanPlayerId)
+                        && _sessionState.Eliminated[_humanPlayerId];
+
+                    if (_resultView != null)
+                    {
+                        var returnTcs = new TaskCompletionSource<bool>();
+
+                        void onReturn()
+                        {
+                            _resultView.OnReturnToLobbyClicked -= onReturn;
+                            returnTcs.TrySetResult(true);
+                        }
+
+                        _resultView.OnReturnToLobbyClicked += onReturn;
+                        _resultView.ShowResult(result, isHumanEliminated);
+
+                        // 로비 복귀 버튼 클릭 대기
+                        await returnTcs.Task;
+
+                        _resultView.Hide();
+                    }
+
                     _lobbyDirector?.ReturnToLobby();
                     break;
                 }

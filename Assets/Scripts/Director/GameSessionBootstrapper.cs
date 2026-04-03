@@ -34,6 +34,7 @@ namespace TexasHoldem.Director
         [SerializeField] private TableLayoutManager _layoutManager;
         [SerializeField] private GameTableView _gameTableView;
         [SerializeField] private ActionPanelView _actionPanelView;
+        [SerializeField] private ResultView _resultView;
 
         private LobbyDirector _lobbyDirector;
         private SessionDirector _sessionDirector;
@@ -189,6 +190,7 @@ namespace TexasHoldem.Director
                 HumanPlayerId,
                 _lobbyDirector,
                 _gameTableView,
+                _resultView,
                 gameState => currentGameState = gameState);
 
             // (10) 첫 핸드 시작
@@ -211,6 +213,11 @@ namespace TexasHoldem.Director
             if (_gameTableView != null)
             {
                 _gameTableView.SetBroadcaster(null);
+            }
+
+            if (_resultView != null)
+            {
+                _resultView.Hide();
             }
         }
 
