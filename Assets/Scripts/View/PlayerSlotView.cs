@@ -11,9 +11,9 @@ namespace TexasHoldem.View
 {
     public class PlayerSlotView : MonoBehaviour
     {
-        [SerializeField] private TextMeshProUGUI _nameLabel;
-        [SerializeField] private TextMeshProUGUI _chipStackLabel;
-        [SerializeField] private TextMeshProUGUI _betAmountLabel;
+        [SerializeField] private TextMeshPro _nameLabel;
+        [SerializeField] private TextMeshPro _chipStackLabel;
+        [SerializeField] private TextMeshPro _betAmountLabel;
         [SerializeField] private GameObject _dealerButtonIcon;
         [SerializeField] private GameObject _foldOverlay;
         [SerializeField] private GameObject _allInBadge;
