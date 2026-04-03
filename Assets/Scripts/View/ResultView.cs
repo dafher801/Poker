@@ -38,7 +38,6 @@ namespace TexasHoldem.View
         private void Awake()
         {
             _returnToLobbyButton.onClick.AddListener(HandleReturnToLobbyClicked);
-            gameObject.SetActive(false);
         }
 
         private void OnDestroy()
@@ -53,6 +52,8 @@ namespace TexasHoldem.View
         /// <param name="isHumanEliminated">유저가 탈락하여 종료된 경우 true</param>
         public void ShowResult(SessionResult result, bool isHumanEliminated)
         {
+            Debug.Log($"[DEBUG][ResultView] ShowResult 진입. result null={result == null}, isHumanEliminated={isHumanEliminated}");
+
             if (result == null)
                 throw new ArgumentNullException(nameof(result));
 
@@ -75,11 +76,13 @@ namespace TexasHoldem.View
                 _eliminationText.gameObject.SetActive(isHumanEliminated);
                 if (isHumanEliminated)
                 {
-                    _eliminationText.text = "탈락했습니다";
+                    _eliminationText.text = "You have been eliminated";
                 }
             }
 
+            Debug.Log($"[DEBUG][ResultView] SetActive(true) 호출 직전. 현재 active={gameObject.activeInHierarchy}, parent active={transform.parent?.gameObject.activeInHierarchy}");
             gameObject.SetActive(true);
+            Debug.Log($"[DEBUG][ResultView] SetActive(true) 호출 완료. 현재 active={gameObject.activeInHierarchy}");
         }
 
         /// <summary>
@@ -103,7 +106,7 @@ namespace TexasHoldem.View
             if (texts.Length >= 1)
             {
                 string eliminatedInfo = ranking.EliminatedAtHand.HasValue
-                    ? $"  (핸드 #{ranking.EliminatedAtHand.Value}에서 탈락)"
+                    ? $"  (Eliminated at hand #{ranking.EliminatedAtHand.Value})"
                     : "";
                 texts[0].text = $"#{ranking.Rank}  {ranking.PlayerId}  —  {ranking.FinalChips:#,0} chips{eliminatedInfo}";
             }
