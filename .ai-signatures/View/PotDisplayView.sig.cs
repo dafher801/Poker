@@ -12,7 +12,7 @@ namespace TexasHoldem.View
 {
     public class PotDisplayView : MonoBehaviour
     {
-        [SerializeField] private TextMeshProUGUI _mainPotLabel;
+        [SerializeField] private TextMeshPro _mainPotLabel;
         [SerializeField] private Transform _sidePotContainer;
         [SerializeField] private GameObject _sidePotPrefab;
 
@@ -61,7 +61,7 @@ namespace TexasHoldem.View
             // 사이드 팟 텍스트 갱신
             for (int i = 0; i < requiredCount; i++)
             {
-                TextMeshProUGUI label = _activeSidePots[i].GetComponentInChildren<TextMeshProUGUI>();
+                TextMeshPro label = _activeSidePots[i].GetComponentInChildren<TextMeshPro>();
                 if (label != null)
                 {
                     label.text = $"Side Pot: {sidePots[i]}";
