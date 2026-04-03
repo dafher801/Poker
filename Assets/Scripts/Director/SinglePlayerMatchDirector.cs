@@ -249,10 +249,12 @@ namespace TexasHoldem.Director
             PrintChipStatus(players);
 
             // ResultView 표시
+            Debug.Log($"[DEBUG] ResultView 표시 시도. _resultView null 여부: {_resultView == null}");
             if (_resultView != null)
             {
                 var result = BuildSessionResult(players);
                 bool isHumanEliminated = players[0].Chips <= 0;
+                Debug.Log($"[DEBUG] ShowResult 호출 직전. isHumanEliminated={isHumanEliminated}, Rankings={result.Rankings.Count}명");
 
                 var returnTcs = new TaskCompletionSource<bool>();
 
@@ -264,9 +266,14 @@ namespace TexasHoldem.Director
 
                 _resultView.OnReturnToLobbyClicked += onReturn;
                 _resultView.ShowResult(result, isHumanEliminated);
+                Debug.Log($"[DEBUG] ShowResult 호출 완료. ResultView GO active={_resultView.gameObject.activeInHierarchy}");
 
                 await returnTcs.Task;
                 _resultView.Hide();
+            }
+            else
+            {
+                Debug.LogError("[DEBUG] _resultView가 null입니다! Inspector에서 ResultView를 연결해주세요.");
             }
         }
 
