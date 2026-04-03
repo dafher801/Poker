@@ -15,6 +15,7 @@ namespace Poker.Entity
         private readonly List<string> _playerIds;
         private readonly Dictionary<string, int> _chips;
         private readonly Dictionary<string, bool> _eliminated;
+        private readonly Dictionary<string, int> _eliminatedAtHand;
 
         public int DealerSeatIndex { get; set; }
         public int HandCount { get; set; }
@@ -22,6 +23,7 @@ namespace Poker.Entity
         public IReadOnlyList<string> PlayerIds => /* ... */;
         public IReadOnlyDictionary<string, int> Chips => /* ... */;
         public IReadOnlyDictionary<string, bool> Eliminated => /* ... */;
+        public IReadOnlyDictionary<string, int> EliminatedAtHand => /* ... */;
 
         public SessionState(List<string> playerIds, int startingChips) { /* ... */ }
         {
@@ -34,6 +36,7 @@ namespace Poker.Entity
             _playerIds = new List<string>(playerIds);
             _chips = new Dictionary<string, int>();
             _eliminated = new Dictionary<string, bool>();
+            _eliminatedAtHand = new Dictionary<string, int>();
 
             foreach (var id in _playerIds)
             {
@@ -61,6 +64,7 @@ namespace Poker.Entity
             if (_chips[playerId] <= 0)
             {
                 _eliminated[playerId] = true;
+                _eliminatedAtHand[playerId] = HandCount;
             }
         }
 
