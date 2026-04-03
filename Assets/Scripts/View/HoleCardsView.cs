@@ -148,7 +148,7 @@ namespace TexasHoldem.View
         {
             Transform cardTransform = cardView.transform;
             Vector3 targetPosition = cardTransform.position;
-            Vector3 targetScale = Vector3.one;
+            Vector3 targetScale = cardView.OriginalScale;
 
             cardTransform.position = DeckPosition;
             cardTransform.localScale = Vector3.zero;

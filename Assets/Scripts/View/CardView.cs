@@ -20,6 +20,35 @@ namespace TexasHoldem.View
         private bool _isFaceUp;
         private bool _hasCard;
         private Coroutine _flipCoroutine;
+        private Vector3 _originalScale;
+        private bool _scaleInitialized;
+
+        /// <summary>
+        /// 프리팹에서 설정된 원본 스케일. 애니메이션의 목표 스케일로 사용된다.
+        /// </summary>
+        public Vector3 OriginalScale
+        {
+            get
+            {
+                if (!_scaleInitialized)
+                    InitializeScale();
+                return _originalScale;
+            }
+        }
+
+        private void Awake()
+        {
+            InitializeScale();
+        }
+
+        private void InitializeScale()
+        {
+            if (_scaleInitialized) return;
+            _originalScale = transform.localScale;
+            if (_originalScale == Vector3.zero)
+                _originalScale = Vector3.one;
+            _scaleInitialized = true;
+        }
 
         /// <summary>
         /// 카드 데이터를 설정한다. spriteProvider로 앞면 스프라이트를 지정하고 내부에 Rank/Suit를 저장한다.
@@ -68,7 +97,6 @@ namespace TexasHoldem.View
             if (_flipCoroutine != null)
             {
                 StopCoroutine(_flipCoroutine);
-                transform.localScale = Vector3.one;
             }
 
             _flipCoroutine = CardAnimator.AnimateFlip(
@@ -76,7 +104,8 @@ namespace TexasHoldem.View
                 transform,
                 () => SetFaceUp(toFaceUp),
                 duration,
-                () => _flipCoroutine = null
+                () => _flipCoroutine = null,
+                _originalScale
             );
         }
 
@@ -104,8 +133,6 @@ namespace TexasHoldem.View
                 StopCoroutine(_flipCoroutine);
                 _flipCoroutine = null;
             }
-
-            transform.localScale = Vector3.one;
 
             gameObject.SetActive(false);
         }

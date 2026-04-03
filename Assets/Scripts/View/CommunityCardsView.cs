@@ -107,7 +107,7 @@ namespace TexasHoldem.View
             cardTransform.position = DeckPosition;
             cardTransform.localScale = Vector3.zero;
 
-            Vector3 targetScale = Vector3.one;
+            Vector3 targetScale = cardView.OriginalScale;
             float elapsed = 0f;
 
             while (elapsed < _dealDuration)

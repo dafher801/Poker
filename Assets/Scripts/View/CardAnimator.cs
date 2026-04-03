@@ -42,18 +42,18 @@ namespace TexasHoldem.View
         /// <param name="duration">애니메이션 시간(초)</param>
         /// <param name="onComplete">완료 시 콜백</param>
         /// <returns>실행된 코루틴</returns>
-        public static Coroutine AnimateFlip(MonoBehaviour runner, Transform card, Action onHalfway, float duration = 0.3f, Action onComplete = null)
+        public static Coroutine AnimateFlip(MonoBehaviour runner, Transform card, Action onHalfway, float duration = 0.3f, Action onComplete = null, Vector3? targetScale = null)
         {
-            return runner.StartCoroutine(FlipCoroutine(card, onHalfway, duration, onComplete));
+            return runner.StartCoroutine(FlipCoroutine(card, onHalfway, duration, onComplete, targetScale ?? Vector3.one));
         }
 
         /// <summary>
         /// 딜 코루틴. fromPosition에서 toPosition으로 이동하며 스케일 0→1 팝업 애니메이션을 수행한다.
         /// </summary>
-        public static IEnumerator DealCoroutine(Transform card, Vector3 fromPosition, Vector3 toPosition, float duration = 0.4f, Action onComplete = null)
+        public static IEnumerator DealCoroutine(Transform card, Vector3 fromPosition, Vector3 toPosition, float duration = 0.4f, Action onComplete = null, Vector3? scaleOverride = null)
         {
             card.position = fromPosition;
-            Vector3 targetScale = Vector3.one;
+            Vector3 targetScale = scaleOverride ?? Vector3.one;
             card.localScale = Vector3.zero;
 
             float elapsed = 0f;
@@ -80,10 +80,10 @@ namespace TexasHoldem.View
         /// <summary>
         /// 뒤집기 코루틴. X축 스케일 기반으로 1→0→1 애니메이션. 중간 지점에서 onHalfway 콜백을 실행한다.
         /// </summary>
-        public static IEnumerator FlipCoroutine(Transform card, Action onHalfway, float duration = 0.3f, Action onComplete = null)
+        public static IEnumerator FlipCoroutine(Transform card, Action onHalfway, float duration = 0.3f, Action onComplete = null, Vector3? targetScale = null)
         {
             float halfDuration = duration * 0.5f;
-            Vector3 originalScale = Vector3.one;
+            Vector3 originalScale = targetScale ?? Vector3.one;
             Vector3 flatScale = new Vector3(0f, originalScale.y, originalScale.z);
 
             // 첫 번째 절반: 현재 면을 접는다
