@@ -15,7 +15,8 @@
       "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/Usecase/PotManager.cs\")",
       "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/Director/HandDirector.cs\")",
       "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/Director/AiAutoMatchDirector.cs\")",
-      "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/View/ActionPanelView.cs\")"
+      "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/View/ActionPanelView.cs\")",
+      "Bash(xxd \"/mnt/c/Unity Projects/Poker/Assets/Scripts/Director/SessionDirector.cs\")"
     ]
   }
 }

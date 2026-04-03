@@ -510,9 +510,9 @@ namespace TexasHoldem.Director
             _broadcaster.Publish(new PotUpdatedEvent(timestamp, _handId, mainPot, sidePots));
         }
 
-        private async Task RunShowdownAsync(CancellationToken ct)
+        private Task RunShowdownAsync(CancellationToken ct)
         {
-            if (_handEnded) return;
+            if (_handEnded) return Task.CompletedTask;
             ct.ThrowIfCancellationRequested();
 
             // 남은 베팅 수집
@@ -567,6 +567,8 @@ namespace TexasHoldem.Director
             _broadcaster.Publish(new HandEndedEvent(timestamp, _handId, awards, HandEndReason.Showdown));
 
             _handEnded = true;
+
+            return Task.CompletedTask;
         }
 
         private async Task EndHandByFold(int winnerSeatIndex)

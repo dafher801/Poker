@@ -20,7 +20,9 @@ namespace TexasHoldem.View
         [SerializeField] private CardView[] _holeCards;
 
         private int _seatIndex;
+        #pragma warning disable CS0414
         private bool _isOccupied;
+        #pragma warning restore CS0414
 
         public int SeatIndex => _seatIndex;
         public CardView[] HoleCards => _holeCards;

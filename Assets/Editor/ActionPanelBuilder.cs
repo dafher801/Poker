@@ -17,7 +17,7 @@ namespace TexasHoldem.Editor
         public static void BuildActionPanel()
         {
             // ── Canvas 탐색 또는 생성 ──
-            Canvas canvas = Object.FindObjectOfType<Canvas>();
+            Canvas canvas = Object.FindFirstObjectByType<Canvas>();
             if (canvas == null)
             {
                 GameObject canvasObj = new GameObject("Canvas");
